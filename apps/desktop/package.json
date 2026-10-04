@@ -1,6 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-desktop",
   "description": "Electron desktop shell for a bundled dsh runtime and external plugins",
+  "homepage": "https://github.com/deepseek-ai/deepseek-harness",
   "version": "0.2.1-alpha.1",
   "private": true,
   "license": "MIT",
