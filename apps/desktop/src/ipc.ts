@@ -29,6 +29,10 @@ export const DESKTOP_IPC = {
   updatesPresentation: 'dsh-desktop:updates-presentation',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
+  windowMaximized: 'dsh-desktop:window-maximized',
+  windowMinimize: 'dsh-desktop:window-minimize',
+  windowToggleMaximize: 'dsh-desktop:window-toggle-maximize',
+  windowClose: 'dsh-desktop:window-close',
   windowsAppearance: 'dsh-desktop:windows-appearance',
   windowsMenu: 'dsh-desktop:windows-menu',
 } as const
