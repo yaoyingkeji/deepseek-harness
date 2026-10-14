@@ -1,0 +1,132 @@
+# Build the DeepSeek Harness Desktop app for Linux x64 (AppImage + deb) on a
+# GitHub-hosted runner and publish a GitHub pre-release with the packages.
+# Mirrors package-linux.sh; the workspace build (build:official) runs first
+# because the packaging script requires the client build record.
+name: Linux x64 package & release (AppImage + deb)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_version:
+        description: 'Build version: auto derives from apps/desktop/package.json; otherwise a full version'
+        type: string
+        default: auto
+        required: false
+      publish:
+        description: 'Create a GitHub pre-release and upload AppImage/deb/SHA256SUMS'
+        type: boolean
+        default: true
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: linux-x64-desktop-package
+  cancel-in-progress: false
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  package-linux:
+    name: Build AppImage + deb and publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: linux-x64
+          fetch-depth: 0
+          persist-credentials: false
+          clean: true
+
+      - name: Configure runner-private caches
+        run: |
+          echo "NODE_COMPILE_CACHE=${{ runner.temp }}/node-compile-cache" >> "$GITHUB_ENV"
+          echo "npm_config_devdir=${{ runner.temp }}/node-gyp" >> "$GITHUB_ENV"
+          echo "TMPDIR=${{ runner.temp }}" >> "$GITHUB_ENV"
+
+      - uses: pnpm/action-setup@v5.0.0
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: Configure pnpm store path
+        id: pnpm-store
+        run: |
+          store_root="$HOME/.local/share/pnpm/store"
+          echo "PNPM_CONFIG_STORE_DIR=$store_root" >> "$GITHUB_ENV"
+          store_path=$(PNPM_CONFIG_STORE_DIR="$store_root" pnpm store path --silent)
+          echo "path=$store_path" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify release version
+        run: pnpm run release:verify --family dsh
+
+      - name: Build official workspace
+        run: pnpm run build:official
+
+      - name: Package Linux AppImage + deb
+        run: bash package-linux.sh
+
+      - name: Determine build version
+        id: version
+        run: |
+          if [ -n "${{ inputs.build_version }}" ] && [ "${{ inputs.build_version }}" != "auto" ]; then
+            echo "version=${{ inputs.build_version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(node -p "require('./apps/desktop/package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: linux-x64-packages-${{ steps.version.outputs.version }}
+          path: |
+            apps/desktop/.desktop-build/targets/linux-x64/artifacts/*.AppImage
+            apps/desktop/.desktop-build/targets/linux-x64/artifacts/*.deb
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Compute SHA256SUMS
+        if: inputs.publish
+        run: |
+          cd apps/desktop/.desktop-build/targets/linux-x64/artifacts
+          sha256sum *.AppImage *.deb > "SHA256SUMS.linux-x64-${{ steps.version.outputs.version }}"
+
+      - name: Publish GitHub pre-release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v${VERSION}-linux-x64"
+          ARTIFACTS_DIR="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" \
+            "$ARTIFACTS_DIR"/*.AppImage \
+            "$ARTIFACTS_DIR"/*.deb \
+            "$ARTIFACTS_DIR"/SHA256SUMS.linux-x64-* \
+            --repo "${{ github.repository }}" \
+            --title "DeepSeek Harness ${VERSION} (Linux x64)" \
+            --notes "Automated Linux x64 build of DeepSeek Harness ${VERSION} from the linux-x64 branch.
+
+- AppImage and deb built with electron-builder on a GitHub-hosted ubuntu-24.04 runner.
+- SHA256SUMS file included." \
+            --prerelease
