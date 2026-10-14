@@ -118,15 +118,20 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           TAG="v${VERSION}-linux-x64"
           ARTIFACTS_DIR="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
+          NOTES=$(cat <<EOF
+          DeepSeek Harness ${VERSION} Linux x64 版自动构建发布，源码来自 ${GITHUB_REF_NAME} 分支。
+
+          - AppImage 与 deb 由 GitHub 托管的 ubuntu-24.04 runner 使用 electron-builder 构建。
+          - 附带 SHA256SUMS 校验文件，请下载后核对。
+          EOF
+          )
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
           gh release create "$TAG" \
             "$ARTIFACTS_DIR"/*.AppImage \
             "$ARTIFACTS_DIR"/*.deb \
             "$ARTIFACTS_DIR"/SHA256SUMS.linux-x64-* \
             --repo "${{ github.repository }}" \
+            --target "$GITHUB_SHA" \
             --title "DeepSeek Harness ${VERSION} (Linux x64)" \
-            --notes "DeepSeek Harness ${VERSION} Linux x64 版自动构建发布，源码来自 linux-x64 分支。
-
-              - AppImage 与 deb 由 GitHub 托管的 ubuntu-24.04 runner 使用 electron-builder 构建。
-              - 附带 SHA256SUMS 校验文件，请下载后核对。" \
+            --notes "$NOTES" \
             --prerelease
