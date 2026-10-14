@@ -216,6 +216,11 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
       titleBarOverlay: { height: WINDOWS_TITLEBAR_HEIGHT, color: chromeFallbackFill(),
         symbolColor: nativeTheme.shouldUseDarkColors ? '#f9fafb' : '#0f1115' },
     } : {}),
+    // Linux has no native overlay for a hidden caption; the renderer draws its
+    // own window controls beside the caption menus.
+    ...(process.platform === 'linux' && primary ? {
+      titleBarStyle: 'hidden' as const,
+    } : {}),
     // hiddenInset places traffic lights inside the sidebar; sidebar vibrancy
     // needs a transparent window background to show through the page.
     ...(process.platform === 'darwin' ? {
@@ -241,8 +246,8 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     if (['http:', 'https:'].includes(new URL(url).protocol)) void shell.openExternal(url)
     return { action: 'deny' }
   })
-  if (process.platform === 'darwin' || process.platform === 'win32') {
-    // Fullscreen hides native window controls; overlays drop their caption clearance.
+  if (process.platform === 'darwin' || process.platform === 'win32' || process.platform === 'linux') {
+    // Fullscreen hides native window controls; captions drop their clearance.
     const sendFullscreen = (): void => {
       if (!window.isDestroyed()) window.webContents.send(DESKTOP_IPC.windowFullscreen, window.isFullScreen())
     }
@@ -251,6 +256,16 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     // Reloads and navigations re-register the preload listener; resend the
     // current state so a fullscreen reload does not fall back to windowed CSS.
     window.webContents.on('did-finish-load', sendFullscreen)
+  }
+  if (process.platform === 'linux') {
+    // Custom Linux caption window controls mirror the maximize state so the
+    // caption button swaps between maximize and restore glyphs.
+    const sendMaximized = (): void => {
+      if (!window.isDestroyed()) window.webContents.send(DESKTOP_IPC.windowMaximized, window.isMaximized())
+    }
+    window.on('maximize', sendMaximized)
+    window.on('unmaximize', sendMaximized)
+    window.webContents.on('did-finish-load', sendMaximized)
   }
   if (process.platform === 'darwin') {
     // Deminiaturize reattaches the NSVisualEffectView material late
@@ -978,7 +993,7 @@ async function main(): Promise<void> {
     { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
   ]
   const refreshApplicationMenu = (): void => {
-    Menu.setApplicationMenu(Menu.buildFromTemplate(process.platform === 'win32' ? devToolsItems : [{
+    Menu.setApplicationMenu(Menu.buildFromTemplate(process.platform === 'win32' || process.platform === 'linux' ? devToolsItems : [{
       label: darwin ? app.name : currentDesktopLocale().messages.application,
       submenu: [...applicationItems(), ...devToolsItems],
     }, ...platformMenus()]))
@@ -1010,7 +1025,7 @@ async function main(): Promise<void> {
     ...(process.platform === 'win32' ? { icon: nativeImage.createFromPath(trayIconPath) } : {}),
   })
 
-  if (process.platform === 'win32') {
+  if (process.platform === 'win32' || process.platform === 'linux') {
     ipcMain.handle(DESKTOP_IPC.windowsMenu, (event, name: unknown, x: unknown, y: unknown) => {
       assertDesktopSender(event, ['app'])
       if (mainWindow === undefined || event.sender !== mainWindow.webContents
@@ -1043,18 +1058,43 @@ async function main(): Promise<void> {
         Menu.buildFromTemplate(items).popup({ window, x: Math.round(x * zoom), y: Math.round(y * zoom), callback: resolve })
       })
     })
-    ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, language: unknown, color: unknown, symbolColor: unknown) => {
-      if (mainWindow === undefined || event.sender !== mainWindow.webContents
-        || event.senderFrame !== mainWindow.webContents.mainFrame) return
-      if (!event.senderFrame.url.startsWith(`${SCHEME}://app/`)) return
-      if (typeof language === 'string' && /^[a-zA-Z]+(?:-[a-zA-Z0-9]+)*$/u.test(language)) {
-        windowsLanguage = language
-      }
-      // Empty colors precede client stylesheet installation; only CSS color values cross IPC.
-      const validColor = (value: unknown): value is string => typeof value === 'string'
-        && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s]+\))$/iu.test(value)
-      if (validColor(color) && validColor(symbolColor)) mainWindow.setTitleBarOverlay({ color, symbolColor })
-    })
+    if (process.platform === 'linux') {
+      // Linux hides native chrome entirely, so the caption buttons drive the
+      // window state directly through these handlers.
+      ipcMain.handle(DESKTOP_IPC.windowMinimize, (event) => {
+        assertDesktopSender(event, ['app'])
+        if (mainWindow === undefined || event.sender !== mainWindow.webContents
+          || event.senderFrame !== mainWindow.webContents.mainFrame) return
+        mainWindow.minimize()
+      })
+      ipcMain.handle(DESKTOP_IPC.windowToggleMaximize, (event) => {
+        assertDesktopSender(event, ['app'])
+        if (mainWindow === undefined || event.sender !== mainWindow.webContents
+          || event.senderFrame !== mainWindow.webContents.mainFrame) return
+        if (mainWindow.isMaximized()) mainWindow.unmaximize()
+        else mainWindow.maximize()
+      })
+      ipcMain.handle(DESKTOP_IPC.windowClose, (event) => {
+        assertDesktopSender(event, ['app'])
+        if (mainWindow === undefined || event.sender !== mainWindow.webContents
+          || event.senderFrame !== mainWindow.webContents.mainFrame) return
+        mainWindow.close()
+      })
+    }
+    if (process.platform === 'win32') {
+      ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, language: unknown, color: unknown, symbolColor: unknown) => {
+        if (mainWindow === undefined || event.sender !== mainWindow.webContents
+          || event.senderFrame !== mainWindow.webContents.mainFrame) return
+        if (!event.senderFrame.url.startsWith(`${SCHEME}://app/`)) return
+        if (typeof language === 'string' && /^[a-zA-Z]+(?:-[a-zA-Z0-9]+)*$/u.test(language)) {
+          windowsLanguage = language
+        }
+        // Empty colors precede client stylesheet installation; only CSS color values cross IPC.
+        const validColor = (value: unknown): value is string => typeof value === 'string'
+          && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s]+\))$/iu.test(value)
+        if (validColor(color) && validColor(symbolColor)) mainWindow.setTitleBarOverlay({ color, symbolColor })
+      })
+    }
   }
 
   const hideMainWindow = (window: BrowserWindow): void => {
