@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: linux-x64
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
           persist-credentials: false
           clean: true
