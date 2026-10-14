@@ -125,8 +125,8 @@ jobs:
             "$ARTIFACTS_DIR"/SHA256SUMS.linux-x64-* \
             --repo "${{ github.repository }}" \
             --title "DeepSeek Harness ${VERSION} (Linux x64)" \
-            --notes "Automated Linux x64 build of DeepSeek Harness ${VERSION} from the linux-x64 branch.
+            --notes "DeepSeek Harness ${VERSION} Linux x64 版自动构建发布，源码来自 linux-x64 分支。
 
-              - AppImage and deb built with electron-builder on a GitHub-hosted ubuntu-24.04 runner.
-              - SHA256SUMS file included." \
+              - AppImage 与 deb 由 GitHub 托管的 ubuntu-24.04 runner 使用 electron-builder 构建。
+              - 附带 SHA256SUMS 校验文件，请下载后核对。" \
             --prerelease
