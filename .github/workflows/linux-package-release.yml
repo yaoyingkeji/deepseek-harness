@@ -127,6 +127,6 @@ jobs:
             --title "DeepSeek Harness ${VERSION} (Linux x64)" \
             --notes "Automated Linux x64 build of DeepSeek Harness ${VERSION} from the linux-x64 branch.
 
-- AppImage and deb built with electron-builder on a GitHub-hosted ubuntu-24.04 runner.
-- SHA256SUMS file included." \
+              - AppImage and deb built with electron-builder on a GitHub-hosted ubuntu-24.04 runner.
+              - SHA256SUMS file included." \
             --prerelease
