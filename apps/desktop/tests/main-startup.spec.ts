@@ -109,6 +109,11 @@ const harness = await vi.hoisted(async () => {
     readonly setFullScreen = vi.fn((flag: boolean) => { this.fullscreen = flag; this.emit(flag ? 'enter-full-screen' : 'leave-full-screen') })
     minimized = false
     isMinimized() { return this.minimized }
+    readonly minimize = vi.fn(() => { this.minimized = true })
+    maximized = false
+    isMaximized() { return this.maximized }
+    readonly maximize = vi.fn(() => { this.maximized = true; this.emit('maximize') })
+    readonly unmaximize = vi.fn(() => { this.maximized = false; this.emit('unmaximize') })
     visible = true
     isVisible() { return this.visible }
     isFocused() { return true }
@@ -821,7 +826,7 @@ describe('desktop main startup', () => {
     }
   })
 
-  it.each(['darwin', 'win32', 'linux'] as const)('limits native titlebar styling to macOS on %s', async (platform) => {
+  it.each(['darwin', 'win32', 'linux'] as const)('applies caption titlebar styling on %s', async (platform) => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -837,8 +842,12 @@ describe('desktop main startup', () => {
         { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
       ])
     } else {
-      expect(window.options).not.toHaveProperty('titleBarStyle')
+      expect(window.options).toMatchObject({ titleBarStyle: 'hidden' })
       expect(window.options).not.toHaveProperty('vibrancy')
+      expect(harness.menu.mock.calls[0]![0]).toEqual([
+        { role: 'toggleDevTools', visible: false },
+        { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
+      ])
     }
     expect(harness.hosts).toHaveLength(0)
   })
@@ -855,7 +864,7 @@ describe('desktop main startup', () => {
     expect((await handler(new Request('dsh-app://foreign/index.html'))).status).toBe(404)
   })
 
-  it.each(['darwin', 'win32'] as const)('relays the %s fullscreen state on transitions and after each load', async (platform) => {
+  it.each(['darwin', 'win32', 'linux'] as const)('relays the %s fullscreen state on transitions and after each load', async (platform) => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -878,14 +887,26 @@ describe('desktop main startup', () => {
     expect(sent()).toHaveLength(relayed)
   })
 
-  it.each(['linux'] as const)('registers no fullscreen relay on %s', async (platform) => {
-    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
+  it('registers Linux caption window controls that drive the primary window', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
     await import('../src/main.ts')
     await harness.preparing.promise
     const window = harness.windows[0]!
-    window.emit('enter-full-screen')
-    window.webContents.emit('did-finish-load')
-    expect(window.webContents.send.mock.calls.filter(([channel]) => channel === DESKTOP_IPC.windowFullscreen)).toHaveLength(0)
+    const sender = window.webContents
+    const owned = { sender, senderFrame: sender.mainFrame }
+    const minimize = harness.handlers.get(DESKTOP_IPC.windowMinimize)!
+    const toggle = harness.handlers.get(DESKTOP_IPC.windowToggleMaximize)!
+    const close = harness.handlers.get(DESKTOP_IPC.windowClose)!
+    minimize(owned)
+    expect(window.minimize).toHaveBeenCalledOnce()
+    window.maximized = false
+    toggle(owned)
+    expect(window.maximize).toHaveBeenCalledOnce()
+    window.maximized = true
+    toggle(owned)
+    expect(window.unmaximize).toHaveBeenCalledOnce()
+    close(owned)
+    expect(window.close).toHaveBeenCalledOnce()
   })
 
   it('covers the macOS vibrancy reattach gap with an opaque base while minimized or hidden', async () => {
