@@ -8,6 +8,40 @@ It is built on an **everything-is-a-plugin** architecture and powered by [Cordis
 
 Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
 
+## Branch notes: `linux-custom-titlebar`（分支说明，中文）
+
+> **适配 Deepin v25 系统并测试通过，其它系统需自行测试**
+
+本仓库默认分支 **`linux-custom-titlebar`** 基于官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 针对 Linux 桌面端进行了优化修改，主要改动如下：
+
+### 1. 自定义标题栏，节约屏幕高度
+
+官方桌面版在 Linux 下使用系统标题栏，「应用 / 编辑」菜单会**单独占据一行屏幕空间**；本分支为 Linux 启用自定义标题栏（`titleBarStyle: hidden`），将「应用 / 编辑」菜单与窗口控制按钮内嵌进标题栏，与 Windows 版体验一致，节约了一整行屏幕高度。
+
+### 2. 去除原生菜单栏，移除多余的「Toggle Developer Tools」调试项
+
+Linux 下原生 GTK 菜单栏会把隐藏的调试菜单项（Toggle Developer Tools）泄漏显示到窗口顶部菜单；本分支在 Linux 下完全抑制原生菜单栏（`Menu.setApplicationMenu(null)`），同时保留应用内绘制的官方「应用 / 编辑」菜单（关于、退出等），界面更干净整洁。
+
+### 3. GitHub Actions 云端自动编译打包
+
+通过 GitHub Actions（ubuntu-24.04 runner + electron-builder）自动编译打包最新的 Linux 安装包（AppImage + deb）并附带 SHA256SUMS 校验文件，发布在 Releases 页面，无需本地构建。
+
+### 下载安装
+
+- 前往 [Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases) 下载 `deepseek-harness-*-linux-x86_64.AppImage` 或 `deepseek-harness-*-linux-amd64.deb`。
+- AppImage：`chmod +x deepseek-harness-*.AppImage && ./deepseek-harness-*.AppImage`
+- deb：`sudo dpkg -i deepseek-harness-*.deb`（也可直接双击安装）
+
+### 界面截图
+
+| 欢迎界面 | 主界面（自定义标题栏） |
+| :---: | :---: |
+| ![欢迎界面](docs/screenshots/linux-custom-titlebar/screenshot-01-welcome.png) | ![主界面](docs/screenshots/linux-custom-titlebar/screenshot-02-main-window.png) |
+
+| 「应用」菜单 | 菜单展开效果 |
+| :---: | :---: |
+| ![应用菜单](docs/screenshots/linux-custom-titlebar/screenshot-03-app-menu.png) | ![菜单展开效果](docs/screenshots/linux-custom-titlebar/screenshot-04-menu-open.png) |
+
 ## Developer preview
 
 DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
