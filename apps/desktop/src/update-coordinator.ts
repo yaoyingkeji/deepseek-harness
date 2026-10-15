@@ -13,19 +13,15 @@ const { autoUpdater } = electronUpdater
 
 /**
  * Extract markdown release notes from an updater check result. Generic feeds
- * carry a plain string; GitHub-style feeds may return localized note arrays.
+ * carry the notes as a plain markdown string in the update metadata.
  * @param updateInfo - Checked update metadata.
- * @returns Combined markdown notes, or undefined when the feed carries none.
+ * @returns Markdown notes, or undefined when the feed carries none.
  */
 export function desktopUpdateReleaseNotes(updateInfo: UpdateInfo): string | undefined {
   const notes = updateInfo.releaseNotes
-  if (typeof notes === 'string') return notes.trim() === '' ? undefined : notes
-  if (Array.isArray(notes) && notes.length > 0) {
-    const preferred = notes.find(note => note.language === 'zh-CN' || note.language === 'zh' || note.language === 'en')
-      ?? notes[0]
-    return preferred.notes.trim() === '' ? undefined : preferred.notes
-  }
-  return undefined
+  if (typeof notes !== 'string') return undefined
+  const trimmed = notes.trim()
+  return trimmed === '' ? undefined : trimmed
 }
 
 /** Owns one updater target until its download and installation settle. */
