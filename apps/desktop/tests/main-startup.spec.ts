@@ -844,10 +844,7 @@ describe('desktop main startup', () => {
     } else {
       expect(window.options).toMatchObject({ titleBarStyle: 'hidden' })
       expect(window.options).not.toHaveProperty('vibrancy')
-      expect(harness.menu.mock.calls[0]![0]).toEqual([
-        { role: 'toggleDevTools', visible: false },
-        { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
-      ])
+      expect(harness.menu.setApplicationMenu).toHaveBeenCalledWith(null)
     }
     expect(harness.hosts).toHaveLength(0)
   })
@@ -1020,6 +1017,12 @@ describe('desktop main startup', () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
+    if (platform !== 'darwin') {
+      // Linux draws its own caption menus and window controls inside the page,
+      // so the native application menu bar is suppressed entirely.
+      expect(harness.menu.setApplicationMenu).toHaveBeenCalledWith(null)
+      return
+    }
     const describeItem = (item: MenuItemConstructorOptions): string | undefined =>
       item.role ?? (item.type === 'separator' ? 'separator' : item.label)
     const template = harness.menu.buildFromTemplate.mock.calls

@@ -993,7 +993,15 @@ async function main(): Promise<void> {
     { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
   ]
   const refreshApplicationMenu = (): void => {
-    Menu.setApplicationMenu(Menu.buildFromTemplate(process.platform === 'win32' || process.platform === 'linux' ? devToolsItems : [{
+    // Linux draws its own caption menus and window controls inside the page,
+    // so the native menu bar is suppressed entirely: top-level `visible: false`
+    // items still render in the GTK menu bar and would leak hidden DevTools
+    // toggles into the caption.
+    if (process.platform === 'linux') {
+      Menu.setApplicationMenu(null)
+      return
+    }
+    Menu.setApplicationMenu(Menu.buildFromTemplate(process.platform === 'win32' ? devToolsItems : [{
       label: darwin ? app.name : currentDesktopLocale().messages.application,
       submenu: [...applicationItems(), ...devToolsItems],
     }, ...platformMenus()]))
