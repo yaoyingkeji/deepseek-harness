@@ -33,6 +33,9 @@ export function desktopReleasesRoot(env: NodeJS.ProcessEnv): string {
  */
 export async function retainDesktopCi(env: NodeJS.ProcessEnv, appRoot = resolve(import.meta.dirname, '..')): Promise<string> {
   const target = resolveDesktopBuildTarget(env)
+  // Retention and later manual publication cover signed macOS and Windows
+  // installers only; Linux packages publish straight from the Actions workflow.
+  if (target === 'linux-x64') throw new Error('desktop retention: linux packages are not publish-retained')
   const windows = target === 'win-x64'
   const platform = windows ? 'win32' : 'darwin'
   const settings = loadDesktopPackageEnvironment(platform, env, appRoot, { unsigned: true })
