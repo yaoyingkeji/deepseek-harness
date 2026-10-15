@@ -401,7 +401,14 @@ async function main(): Promise<void> {
   // chrome and its content never mix languages.
   const showAbout = async (): Promise<void> => {
     await ordinaryMessageBox({ type: 'info', title: locale.messages.aboutMenu, message: locale.messages.aboutProduct,
-      detail: formatDesktopMessage(locale.messages.aboutVersion, { version: app.getVersion() }),
+      detail: [
+        formatDesktopMessage(locale.messages.aboutVersion, { version: app.getVersion() }),
+        '',
+        locale.messages.aboutHomepageLabel,
+        locale.messages.aboutHomepageUrl,
+        '',
+        locale.messages.aboutBranchNote,
+      ].join('\n'),
       buttons: [locale.messages.updateAcknowledge], cancelId: 0 })
   }
   const commandManager = new DesktopCommandManager({
@@ -860,9 +867,11 @@ async function main(): Promise<void> {
         }
         if (state.phase !== 'available' && !(state.phase === 'error' && state.failedOperation === 'download')) return
         if (manual) {
+          const notes = state.notes
           const result = await ordinaryMessageBox({ title: locale.messages.updateCheckTitle,
             message: formatDesktopMessage(locale.messages.updateAvailable, { version: state.version ?? '' }),
-            detail: locale.messages.updateDetail,
+            detail: notes === undefined ? locale.messages.updateDetail
+              : `${locale.messages.updateDetail}\n\n${locale.messages.updateNotes}\n${notes}`,
             buttons: [locale.messages.updateDownload], cancelId: 1 })
           if (result.response !== 0) return
         }
@@ -967,9 +976,9 @@ async function main(): Promise<void> {
       { role: 'unhide', label: currentDesktopLocale().messages.showAllApplications }, { type: 'separator' }]
     : []
   const applicationItems = (): MenuItemConstructorOptions[] => [
-    // Windows has no system About panel; Electron's fallback is a plain
-    // message box, so the shell shows its own dimmed dialog instead.
-    process.platform === 'win32'
+    // Windows and Linux have no native About panel; Electron's fallback is a
+    // plain message box, so the shell shows its own dimmed dialog instead.
+    process.platform === 'win32' || process.platform === 'linux'
       ? { label: currentDesktopLocale().messages.aboutMenu,
         click: () => { void showAbout().catch((error: unknown) => { console.error(error) }) } }
       : { label: currentDesktopLocale().messages.aboutMenu, role: 'about' },

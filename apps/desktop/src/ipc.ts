@@ -43,6 +43,8 @@ export type DesktopUpdatePreparationFailureKind = 'stop-failed' | 'tasks-changed
 export interface DesktopUpdateState {
   readonly phase: 'idle' | 'checking' | 'available' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
   readonly version?: string
+  /** Markdown release notes carried by the update feed, shown in the update prompt. */
+  readonly notes?: string
   readonly message?: string
   /** Main-owned diagnostics without subprocess output or credentials; hidden until expanded. */
   readonly technicalDetails?: string

@@ -34,6 +34,34 @@ import {
   writeMacOSAppUpdateConfig,
 } from './macos-app-update-config.mjs'
 
+/** Environment variable overriding the Linux auto-update feed base URL. */
+export const DESKTOP_LINUX_UPDATE_ENV = 'DSH_DESKTOP_LINUX_UPDATE_URL'
+
+/** Chinese branch release notes embedded in the Linux update feed metadata. */
+export const LINUX_UPDATE_RELEASE_NOTES = `linux-custom-titlebar 分支更新
+
+基于官方进行分支优化修改，适配 Deepin v25 系统并测试通过，其它系统需自行测试。
+
+- 自定义标题栏：「应用 / 编辑」菜单内嵌标题栏，节约屏幕高度
+- 去除原生菜单栏，移除多余的 Toggle Developer Tools 调试项
+- GitHub Actions 云端自动打包 AppImage 与 deb`
+
+/**
+ * Resolve the Linux auto-update feed: the fork's GitHub release directory.
+ * @param {NodeJS.ProcessEnv} env - Packaging environment.
+ * @param {string} version - Desktop semantic version baked into the release tag.
+ * @returns {{ channel: 'nightly', publicUrl: string }} Linux updater feed.
+ */
+export function resolveDesktopLinuxUpdateConfig(env, version) {
+  const url = env[DESKTOP_LINUX_UPDATE_ENV]?.trim()
+  return {
+    channel: 'nightly',
+    publicUrl: url === undefined || url === ''
+      ? `https://github.com/yaoyingkeji/deepseek-harness/releases/download/v${version}-linux-x64/`
+      : url,
+  }
+}
+
 /**
  * Create electron-builder configuration from one release environment.
  * @param {NodeJS.ProcessEnv} env - Packaging environment.
@@ -95,12 +123,14 @@ export function createElectronBuilderConfig(
   if (windowsSigner !== undefined) {
     installWindowsNsisBootstrapSigner({ sign: windowsSigner })
   }
-  const update = unsigned || resolvedPlatform === 'linux' ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
-  if (preparedRuntime !== undefined) buildPaths.dsh = preparedRuntime
   // electron-builder merges extraMetadata into the packaged manifest, so a build version here reaches
   // the artifact names, the update feed, and the installed app.getVersion() the updater compares against.
   const productVersion = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).version
   const buildVersion = resolveDesktopBuildVersion(env, productVersion)
+  const update = unsigned ? undefined : resolvedPlatform === 'linux'
+    ? resolveDesktopLinuxUpdateConfig(env, productVersion)
+    : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
+  if (preparedRuntime !== undefined) buildPaths.dsh = preparedRuntime
   if (update?.channel === 'latest' && buildVersion.includes('-')) throw new Error('desktop package: latest requires a stable version')
   const packaged = resolveDesktopBuildCommit(env)
   return {
@@ -114,6 +144,14 @@ export function createElectronBuilderConfig(
       ...packaged === undefined ? {} : { dshBuildCommit: packaged.commit, dshBuildDirty: packaged.dirty },
     },
     productName: 'DeepSeek Harness',
+    // Embed the branch release notes in the update feed metadata so the
+    // update prompt can show what changed in each release.
+    ...(update === undefined ? {} : {
+      releaseInfo: {
+        releaseName: `DeepSeek Harness ${productVersion}`,
+        releaseNotes: LINUX_UPDATE_RELEASE_NOTES,
+      },
+    }),
     // Unsigned builds carry their own suffix so a shared file can never pass for a release artifact.
     artifactName: `deepseek-harness-\${version}-\${os}-\${arch}${output.suffix}.\${ext}`,
     directories: { output: output.directory },

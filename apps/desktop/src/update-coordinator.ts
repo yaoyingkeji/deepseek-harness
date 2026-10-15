@@ -11,6 +11,23 @@ import { DesktopUpdatePreparationError } from './update-error.ts'
 
 const { autoUpdater } = electronUpdater
 
+/**
+ * Extract markdown release notes from an updater check result. Generic feeds
+ * carry a plain string; GitHub-style feeds may return localized note arrays.
+ * @param updateInfo - Checked update metadata.
+ * @returns Combined markdown notes, or undefined when the feed carries none.
+ */
+export function desktopUpdateReleaseNotes(updateInfo: UpdateInfo): string | undefined {
+  const notes = updateInfo.releaseNotes
+  if (typeof notes === 'string') return notes.trim() === '' ? undefined : notes
+  if (Array.isArray(notes) && notes.length > 0) {
+    const preferred = notes.find(note => note.language === 'zh-CN' || note.language === 'zh' || note.language === 'en')
+      ?? notes[0]
+    return preferred.notes.trim() === '' ? undefined : preferred.notes
+  }
+  return undefined
+}
+
 /** Owns one updater target until its download and installation settle. */
 export class DesktopUpdateCoordinator {
   private current: DesktopUpdateState = { phase: 'idle' }
@@ -190,8 +207,10 @@ export class DesktopUpdateCoordinator {
       const version = result.updateInfo.version
       if (valid(version) === null) throw new Error('desktop update: feed version is invalid')
       if (this.channel === 'latest' && version.includes('-')) throw new Error('desktop update: latest feed contains a prerelease')
+      const notes = desktopUpdateReleaseNotes(result.updateInfo)
       this.candidate = result.isUpdateAvailable && gt(version, this.currentVersion()) ? version : undefined
-      return this.setState(this.candidate === undefined ? { phase: 'idle' } : { phase: 'available', version })
+      return this.setState(this.candidate === undefined ? { phase: 'idle' }
+        : { phase: 'available', version, ...(notes === undefined ? {} : { notes }) })
     } catch (error) {
       return this.failure(error, 'check')
     }
