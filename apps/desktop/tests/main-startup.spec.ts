@@ -561,8 +561,14 @@ describe('desktop main startup', () => {
     const zh = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
       type: 'info', title: zh ? '关于 DeepSeek Harness' : 'About DeepSeek Harness', message: 'DeepSeek Harness',
-      detail: zh ? '版本 V1.0.0' : 'Version V1.0.0', buttons: [zh ? '确定' : 'OK'], cancelId: 0,
+      detail: expect.stringContaining(zh ? '版本 V1.0.0' : 'Version V1.0.0'),
+      buttons: [zh ? '确定' : 'OK', zh ? '访问主页' : 'Visit Homepage'], cancelId: 0,
     }))
+    // The homepage button opens the fork repository in the default browser.
+    harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 1 })
+    ;(about!.click as () => void)()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(harness.openExternal).toHaveBeenLastCalledWith('https://github.com/yaoyingkeji/deepseek-harness')
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
     harness.dialog.showMessageBox.mockRejectedValueOnce(new Error('overlay unavailable'))
     ;(about!.click as () => void)()

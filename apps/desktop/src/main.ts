@@ -400,7 +400,7 @@ async function main(): Promise<void> {
   // Copy comes from the same locale as the update prompts so the dialog
   // chrome and its content never mix languages.
   const showAbout = async (): Promise<void> => {
-    await ordinaryMessageBox({ type: 'info', title: locale.messages.aboutMenu, message: locale.messages.aboutProduct,
+    const result = await ordinaryMessageBox({ type: 'info', title: locale.messages.aboutMenu, message: locale.messages.aboutProduct,
       detail: [
         formatDesktopMessage(locale.messages.aboutVersion, { version: app.getVersion() }),
         '',
@@ -409,7 +409,9 @@ async function main(): Promise<void> {
         '',
         locale.messages.aboutBranchNote,
       ].join('\n'),
-      buttons: [locale.messages.updateAcknowledge], cancelId: 0 })
+      buttons: [locale.messages.updateAcknowledge, locale.messages.aboutHomepageButton], cancelId: 0 })
+    // The homepage button opens the fork repository in the default browser.
+    if (result.response === 1) void shell.openExternal(locale.messages.aboutHomepageUrl)
   }
   const commandManager = new DesktopCommandManager({
     resources: process.resourcesPath,
