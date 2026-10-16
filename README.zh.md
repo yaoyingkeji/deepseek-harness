@@ -22,9 +22,13 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 Linux 下原生 GTK 菜单栏会把隐藏的调试菜单项（Toggle Developer Tools）泄漏显示到窗口顶部菜单；本分支在 Linux 下完全抑制原生菜单栏（`Menu.setApplicationMenu(null)`），同时保留应用内绘制的官方「应用 / 编辑」菜单（关于、退出等），界面更干净整洁。
 
-### 3. GitHub Actions 云端自动编译打包
+### 3. 系统托盘 + 关闭行为可配置
 
-通过 GitHub Actions（ubuntu-24.04 runner + electron-builder）自动编译打包最新的 Linux 安装包（AppImage + deb）并附带 SHA256SUMS 校验文件，发布在 Releases 页面，无需本地构建。
+窗口关闭后应用驻留后台，Linux 托盘图标提供「显示窗口 / 退出」入口，与其他平台体验对齐；同时可在 **通用设置 → 关闭窗口时** 选择点击 X 后的行为：**隐藏到托盘（默认）**或**退出应用**，托盘菜单文案随系统语言切换（中文/English）。
+
+### 4. 启用自动更新（检查更新）
+
+Linux 版启用「检查更新」：更新源指向本仓库稳定的 `linux-latest` Release（每次构建自动刷新为最新版本），AppImage 支持自动下载安装，检查到新版本时展示更新说明。
 
 ### 下载安装
 

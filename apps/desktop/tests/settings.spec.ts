@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
-import { readDesktopSettings } from '../src/settings.ts'
+import { readDesktopSettings, writeDesktopSettings } from '../src/settings.ts'
 
 vi.mock('node:fs', async importOriginal => ({ ...await importOriginal<typeof import('node:fs')>() }))
 
@@ -22,8 +22,10 @@ it('creates a discoverable default file on first launch without touching other p
   const { userData, path } = fixture()
   rmSync(join(userData, 'desktop'), { recursive: true })
   writeFileSync(join(userData, 'keybindings.json'), 'existing shortcuts\n')
-  expect(readDesktopSettings(userData)).toEqual({ updates: { allowTestAuthPopupWindow: false } })
-  expect(readFileSync(path, 'utf8')).toBe('{\n  "updates": {\n    "allowTestAuthPopupWindow": false\n  }\n}\n')
+  expect(readDesktopSettings(userData)).toEqual({
+    updates: { allowTestAuthPopupWindow: false }, window: { closeBehavior: 'hide' },
+  })
+  expect(readFileSync(path, 'utf8')).toBe('{\n  "updates": {\n    "allowTestAuthPopupWindow": false\n  },\n  "window": {\n    "closeBehavior": "hide"\n  }\n}\n')
   expect(readFileSync(join(userData, 'keybindings.json'), 'utf8')).toBe('existing shortcuts\n')
 })
 
@@ -31,7 +33,23 @@ it.each(['{}', '{"updates": {}}', '{"other": 1, "updates": {"other": true}}'])('
   const { userData, path } = fixture()
   writeFileSync(path, raw)
   expect(readDesktopSettings(userData).updates.allowTestAuthPopupWindow).toBe(false)
+  expect(readDesktopSettings(userData).window.closeBehavior).toBe('hide')
   expect(readFileSync(path, 'utf8')).toBe(raw)
+})
+
+it('loads an explicit close-button behavior on the next read', () => {
+  const { userData, path } = fixture()
+  writeFileSync(path, '{"window":{"closeBehavior":"quit"}}')
+  expect(readDesktopSettings(userData).window.closeBehavior).toBe('quit')
+  expect(readFileSync(path, 'utf8')).toBe('{"window":{"closeBehavior":"quit"}}')
+})
+
+it('persists settings with writeDesktopSettings', () => {
+  const { userData, path } = fixture()
+  writeFileSync(path, '{"window":{"closeBehavior":"quit"}}')
+  const settings = readDesktopSettings(userData)
+  writeDesktopSettings(userData, { ...settings, window: { closeBehavior: 'hide' } })
+  expect(readDesktopSettings(userData).window.closeBehavior).toBe('hide')
 })
 
 it('loads explicit opt-in and opt-out on the next read without changing an earlier process snapshot', () => {
@@ -50,7 +68,7 @@ it('loads explicit opt-in and opt-out on the next read without changing an earli
 
 it.each(['', '{', 'null', '[]', '{"updates":null}', '{"updates":[]}',
   '{"updates":{"allowTestAuthPopupWindow":"false"}}', '{"updates":{"allowTestAuthPopupWindow":1}}',
-  '{"updates":{"allowTestAuthPopupWindow":null}}'])('reports invalid settings with their path and preserves the original: %s', (raw) => {
+  '{"updates":{"allowTestAuthPopupWindow":null}}', '{"window":[]}', '{"window":{"closeBehavior":"maximize"}}'])('reports invalid settings with their path and preserves the original: %s', (raw) => {
   const { userData, path } = fixture()
   writeFileSync(path, raw)
   expect(readDesktopSettings(userData).updates.allowTestAuthPopupWindow).toBe(false)

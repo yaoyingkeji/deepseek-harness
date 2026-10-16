@@ -27,6 +27,8 @@ export const DESKTOP_IPC = {
   updatesStatus: 'dsh-desktop:updates-status',
   updatesOpen: 'dsh-desktop:updates-open',
   updatesPresentation: 'dsh-desktop:updates-presentation',
+  windowCloseBehaviorGet: 'dsh-desktop:window-close-behavior-get',
+  windowCloseBehaviorSet: 'dsh-desktop:window-close-behavior-set',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
   windowMaximized: 'dsh-desktop:window-maximized',
@@ -74,6 +76,9 @@ export interface DesktopUpdatePresentation {
   readonly failure?: DesktopUpdateFailureKind
 }
 
+/** Close-button behavior: keep the app in the background tray or exit completely. */
+export type DesktopCloseBehavior = 'hide' | 'quit'
+
 /** Product documents cannot supply update versions, package URLs, or installation authorization. */
 export interface DshDesktopProductApi {
   readonly protocolVersion: 1
@@ -89,6 +94,10 @@ export interface DshDesktopProductApi {
     status(): Promise<DesktopUpdatePresentation>
     open(): Promise<void>
     subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
+  }
+  readonly closeBehavior: {
+    get(): Promise<DesktopCloseBehavior>
+    set(behavior: DesktopCloseBehavior): Promise<void>
   }
 }
 

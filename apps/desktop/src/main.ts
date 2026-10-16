@@ -52,7 +52,7 @@ import { DesktopMandatoryUpdatePolicy, resolveDesktopPolicyConfig, type DesktopP
 import { desktopClientMetadata, desktopClientVersion } from './client-metadata.ts'
 import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
-import { readDesktopSettings } from './settings.ts'
+import { readDesktopSettings, writeDesktopSettings, type DesktopCloseBehavior } from './settings.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
@@ -330,7 +330,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
 }
 
 async function main(): Promise<void> {
-  const desktopSettings = readDesktopSettings(app.getPath('userData'))
+  let desktopSettings = readDesktopSettings(app.getPath('userData'))
   void pruneCrashReports(app.getPath('logs'))
   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
   const updateJournal = journalDirectory === undefined ? undefined : new DesktopUpdateJournal(journalDirectory, app.getVersion())
@@ -821,6 +821,19 @@ async function main(): Promise<void> {
     await openUpdatePrompt()
   })
 
+  // The close-button behavior preference is owned by the Electron shell settings.
+  ipcMain.handle(DESKTOP_IPC.windowCloseBehaviorGet, (event) => {
+    assertProductSender(event)
+    return desktopSettings.window.closeBehavior
+  })
+  ipcMain.handle(DESKTOP_IPC.windowCloseBehaviorSet, (event, behavior: unknown) => {
+    assertProductSender(event)
+    if (behavior !== 'hide' && behavior !== 'quit') throw new Error('desktop close behavior: must be hide or quit')
+    const next: DesktopCloseBehavior = behavior
+    desktopSettings = { ...desktopSettings, window: { closeBehavior: next } }
+    writeDesktopSettings(app.getPath('userData'), desktopSettings)
+  })
+
   let promptOperation: Promise<void> | undefined
   let policyAuthenticationQueued = false
   const openUpdatePrompt = (manual = false): Promise<void> => {
@@ -1137,11 +1150,16 @@ async function main(): Promise<void> {
     browserGuests.bind(window, (guest, name) => shortcuts.attachGuest(window, guest, name))
     shortcuts.attach(window)
     window.on('focus', automaticCheck)
-    // Closing hides: the page and the Host keep running, and the next show resumes the same document.
+    // Closing hides by default: the page and the Host keep running, and the next show resumes the same document.
+    // The General settings close-behavior option can turn the close button into a real quit instead.
     window.on('close', (event) => {
       if (quitting || shellInstallerOwnsQuit || sessionEnding) return
       event.preventDefault()
       if (updateDialog.isOpen) { updateDialog.focus(); return }
+      if (desktopSettings.window.closeBehavior === 'quit') {
+        app.quit()
+        return
+      }
       const hide = (): void => {
         if (!quitting && !shellInstallerOwnsQuit && !sessionEnding && !window.isDestroyed()) hideMainWindow(window)
       }

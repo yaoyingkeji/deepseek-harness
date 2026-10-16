@@ -27,6 +27,15 @@ export interface DesktopUpdateBridge {
   subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
 }
 
+/** Close-button behavior: keep the app in the background tray or exit completely. */
+export type DesktopCloseBehavior = 'hide' | 'quit'
+
+/** Optional carrier API for the close-button behavior preference. */
+export interface DesktopCloseBehaviorBridge {
+  get(): Promise<DesktopCloseBehavior>
+  set(behavior: DesktopCloseBehavior): Promise<void>
+}
+
 /** Shared carrier status for the account row and collapsed sidebar badge. */
 export interface DesktopUpdateView {
   readonly presentation?: DesktopUpdatePresentation

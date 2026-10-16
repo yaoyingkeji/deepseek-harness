@@ -10,7 +10,14 @@ export interface DesktopSettings {
   readonly updates: {
     readonly allowTestAuthPopupWindow: boolean
   }
+  readonly window: {
+    /** Behavior of the window close button: hide to the tray or quit. */
+    readonly closeBehavior: DesktopCloseBehavior
+  }
 }
+
+/** Close-button behavior: keep the app in the background tray or exit completely. */
+export type DesktopCloseBehavior = 'hide' | 'quit'
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -24,7 +31,7 @@ function record(value: unknown): value is Record<string, unknown> {
 export function readDesktopSettings(userData: string): DesktopSettings {
   const directory = join(userData, 'desktop')
   const path = join(directory, 'settings.json')
-  const defaults: DesktopSettings = { updates: { allowTestAuthPopupWindow: false } }
+  const defaults: DesktopSettings = { updates: { allowTestAuthPopupWindow: false }, window: { closeBehavior: 'hide' } }
   try {
     let raw: string
     try { raw = readFileSync(path, 'utf8') } catch (error) {
@@ -44,7 +51,17 @@ export function readDesktopSettings(userData: string): DesktopSettings {
     if (allow !== undefined && typeof allow !== 'boolean') {
       throw new Error('updates.allowTestAuthPopupWindow must be true or false')
     }
-    return { updates: { allowTestAuthPopupWindow: allow ?? false } }
+    if (value.window !== undefined && !record(value.window)) {
+      throw new Error('window must be an object')
+    }
+    const closeBehavior = value.window?.closeBehavior
+    if (closeBehavior !== undefined && closeBehavior !== 'hide' && closeBehavior !== 'quit') {
+      throw new Error('window.closeBehavior must be "hide" or "quit"')
+    }
+    return {
+      updates: { allowTestAuthPopupWindow: allow ?? false },
+      window: { closeBehavior: closeBehavior ?? 'hide' },
+    }
   } catch (error) {
     try {
       console.warn(`desktop settings: ${path}: using defaults because settings could not be loaded`, error)
@@ -54,4 +71,17 @@ export function readDesktopSettings(userData: string): DesktopSettings {
     }
     return defaults
   }
+}
+
+/**
+ * Persist shell settings after a runtime change. The document is created or
+ * replaced atomically enough for the single main process that owns it.
+ * @param userData - Electron's userData directory, independent of DSH_HOME.
+ * @param settings - Complete validated settings document to write.
+ */
+export function writeDesktopSettings(userData: string, settings: DesktopSettings): void {
+  const directory = join(userData, 'desktop')
+  const path = join(directory, 'settings.json')
+  mkdirSync(directory, { recursive: true, mode: 0o700 })
+  writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 })
 }
