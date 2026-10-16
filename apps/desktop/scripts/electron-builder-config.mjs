@@ -47,9 +47,12 @@ export const LINUX_UPDATE_RELEASE_NOTES = `linux-custom-titlebar 分支更新
 - GitHub Actions 云端自动打包 AppImage 与 deb`
 
 /**
- * Resolve the Linux auto-update feed: the fork's GitHub release directory.
+ * Resolve the Linux auto-update feed: the fork's stable GitHub release
+ * directory. A fixed tag (not a versioned one) is used so every installed
+ * build always sees the newest metadata; the workflow refreshes that release
+ * on each build.
  * @param {NodeJS.ProcessEnv} env - Packaging environment.
- * @param {string} version - Desktop semantic version baked into the release tag.
+ * @param {string} version - Desktop semantic version (kept for diagnostics).
  * @returns {{ channel: 'nightly', publicUrl: string }} Linux updater feed.
  */
 export function resolveDesktopLinuxUpdateConfig(env, version) {
@@ -57,7 +60,7 @@ export function resolveDesktopLinuxUpdateConfig(env, version) {
   return {
     channel: 'nightly',
     publicUrl: url === undefined || url === ''
-      ? `https://github.com/yaoyingkeji/deepseek-harness/releases/download/v${version}-linux-x64/`
+      ? 'https://github.com/yaoyingkeji/deepseek-harness/releases/download/linux-latest/'
       : url,
   }
 }

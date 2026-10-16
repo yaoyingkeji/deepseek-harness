@@ -137,3 +137,33 @@ jobs:
             --title "DeepSeek Harness ${VERSION} (Linux x64)" \
             --notes "$NOTES" \
             --prerelease
+
+      - name: Publish linux-latest (auto-update feed)
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          ARTIFACTS_DIR="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
+          LATEST_TAG="linux-latest"
+          LATEST_NOTES=$(cat <<EOF
+          DeepSeek Harness ${VERSION} Linux x64 最新构建（应用自动更新源）。
+
+          该 Release 是应用内「检查更新」的稳定更新源，每次云端构建都会刷新为最新版本。
+          - AppImage：chmod +x 后运行
+          - deb：sudo dpkg -i 安装
+          - 版本化发布见 v${VERSION}-linux-x64
+          EOF
+          )
+          gh release delete "$LATEST_TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$LATEST_TAG" \
+            "$ARTIFACTS_DIR"/*.AppImage \
+            "$ARTIFACTS_DIR"/*.deb \
+            "$ARTIFACTS_DIR"/SHA256SUMS.linux-x64-* \
+            "$ARTIFACTS_DIR"/*.yml \
+            --repo "${{ github.repository }}" \
+            --target "$GITHUB_SHA" \
+            --title "DeepSeek Harness ${VERSION} (Linux x64 · latest)" \
+            --notes "$LATEST_NOTES" \
+            --prerelease
