@@ -78,6 +78,20 @@ jobs:
       - name: Verify release version
         run: pnpm run release:verify --family dsh
 
+      - name: Apply custom build version
+        if: inputs.build_version != 'auto'
+        env:
+          BUILD_VERSION: ${{ inputs.build_version }}
+        run: |
+          node -e "
+            const fs = require('node:fs');
+            const p = 'apps/desktop/package.json';
+            const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+            j.version = process.env.BUILD_VERSION;
+            fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
+            console.log('desktop version ->', process.env.BUILD_VERSION);
+          "
+
       - name: Build official workspace
         run: pnpm run build:official
 
@@ -139,7 +153,7 @@ jobs:
             --prerelease
 
       - name: Publish linux-latest (auto-update feed)
-        if: inputs.publish
+        if: inputs.publish && inputs.build_version == 'auto'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
