@@ -101,7 +101,8 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item', id: 'close-behavior', order: 10, locale: NS,
     inject: (): CloseWindowBehaviorRowInjected => ({
-      bridge: carrier?.protocolVersion === 1 ? carrier.closeBehavior : undefined,
+      ...(carrier?.protocolVersion === 1 && carrier.closeBehavior !== undefined
+        ? { bridge: carrier.closeBehavior } : {}),
     }),
   }, CloseWindowBehaviorRow))
   ctx.slots.inject('sidebar.toggle.badge', () => ctx.slots.register({
