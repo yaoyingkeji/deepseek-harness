@@ -83,14 +83,20 @@ jobs:
         env:
           BUILD_VERSION: ${{ inputs.build_version }}
         run: |
-          node -e "
-            const fs = require('node:fs');
-            const p = 'apps/desktop/package.json';
-            const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-            j.version = process.env.BUILD_VERSION;
-            fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
-            console.log('desktop version ->', process.env.BUILD_VERSION);
-          "
+          CURRENT=$(node -p "require('./package.json').version")
+          export CURRENT
+          for f in package.json $(find apps packages -name package.json -not -path '*/node_modules/*'); do
+            node -e '
+              const fs = require("node:fs");
+              const j = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+              if (typeof j.version === "string" && j.version === process.env.CURRENT) {
+                j.version = process.env.BUILD_VERSION;
+                fs.writeFileSync(process.argv[1], JSON.stringify(j, null, 2) + "\n");
+                console.log("updated", process.argv[1]);
+              }
+            ' "$f"
+          done
+          echo "workspace version rewritten: $(node -p "require('./apps/desktop/package.json').version")"
 
       - name: Build official workspace
         run: pnpm run build:official
