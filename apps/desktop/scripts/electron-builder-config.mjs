@@ -44,6 +44,7 @@ export const LINUX_UPDATE_RELEASE_NOTES = `linux-custom-titlebar 分支更新
 
 - 自定义标题栏：「应用 / 编辑」菜单内嵌标题栏，节约屏幕高度
 - 去除原生菜单栏，移除多余的 Toggle Developer Tools 调试项
+- 系统托盘：窗口关闭后驻留后台，托盘图标可「显示窗口 / 退出」
 - GitHub Actions 云端自动打包 AppImage 与 deb`
 
 /**
