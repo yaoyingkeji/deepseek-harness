@@ -24,10 +24,10 @@ import { en, NS, zh, type JobKey } from './locales.ts'
  * @param titleEn - English notification title.
  * @param bodyEn - English notification body.
  */
-function desktopNotify(category: 'approval' | 'question' | 'job', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string): void {
+function desktopNotify(category: 'approval' | 'question' | 'job', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
   const zh = (document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-  void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'approval' | 'question' | 'job'; title: string; body: string }) => Promise<void> } })
-    .dshDesktop?.notify?.({ category, title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn })
+  void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'approval' | 'question' | 'job'; title: string; body: string; sessionId?: string }) => Promise<void> } })
+    .dshDesktop?.notify?.({ category, title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn, ...(sessionId === undefined ? {} : { sessionId }) })
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -67,6 +67,7 @@ export function apply(ctx: ClientContext): void {
             `${job.label} ${finished ? '已完成' : '已失败'}`,
             finished ? 'Task finished' : 'Task failed',
             `${job.label} ${finished ? 'finished' : 'failed'}`,
+            job.owner,
           )
         }
         settled[job.id] = job.status

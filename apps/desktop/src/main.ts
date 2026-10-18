@@ -835,10 +835,6 @@ async function main(): Promise<void> {
     writeDesktopSettings(app.getPath('userData'), desktopSettings)
   })
 
-  // Native desktop notifications for approvals, questions, and finished jobs.
-  // The in-app panels already cover focused use, so the notification only
-  // fires while the primary window is not focused (hidden or backgrounded).
-  // Categories disabled in the General settings are filtered out here.
   ipcMain.handle(DESKTOP_IPC.notify, (event, input: unknown) => {
     assertProductSender(event)
     if (typeof input !== 'object' || input === null
@@ -848,13 +844,26 @@ async function main(): Promise<void> {
       throw new Error('desktop notify: title, body and category are required')
     }
     const { category, title, body } = input as { category: DesktopNotificationCategory; title: string; body: string }
+    const sessionId = (input as { sessionId?: unknown }).sessionId
+    if (sessionId !== undefined && typeof sessionId !== 'string') {
+      throw new Error('desktop notify: sessionId must be a string')
+    }
     if (!desktopSettings.notifications[category]) return
     if (mainWindow?.isFocused()) return
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
       : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
     try {
-      new Notification({ title, body, icon: iconPath, silent: false }).show()
+      const notification = new Notification({ title, body, icon: iconPath, silent: false })
+      // Clicking the notification focuses the window and tells the web UI
+      // which session's approval or question panel to surface.
+      notification.on('click', () => {
+        focusPrimaryWindow()
+        if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(DESKTOP_IPC.notifyAction, sessionId)
+        }
+      })
+      notification.show()
     } catch (error) {
       console.warn('desktop notification: unavailable', error)
     }

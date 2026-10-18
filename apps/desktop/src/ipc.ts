@@ -32,6 +32,7 @@ export const DESKTOP_IPC = {
   notificationsGet: 'dsh-desktop:notifications-get',
   notificationsSet: 'dsh-desktop:notifications-set',
   notify: 'dsh-desktop:notify',
+  notifyAction: 'dsh-desktop:notify-action',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
   windowMaximized: 'dsh-desktop:window-maximized',
@@ -93,6 +94,8 @@ export interface DesktopNotifyInput {
   readonly category: DesktopNotificationCategory
   readonly title: string
   readonly body: string
+  /** Session the notification belongs to; returned on notification click so the UI can surface its panel. */
+  readonly sessionId?: string
 }
 
 /** Product documents cannot supply update versions, package URLs, or installation authorization. */
@@ -126,6 +129,14 @@ export interface DshDesktopProductApi {
     get(): Promise<DesktopNotificationSettings>
     set(category: DesktopNotificationCategory, enabled: boolean): Promise<void>
   }
+  /**
+   * Subscribe to notification clicks. The shell focuses the window and then
+   * pushes the notification's session (when known) so the UI can surface its
+   * pending approval or question panel.
+   * @param listener - Receives the notification session id, or undefined.
+   * @returns unsubscribe function.
+   */
+  onNotifyAction(listener: (sessionId: string | undefined) => void): () => void
 }
 
 /** Scheme of Desktop-owned application documents. */

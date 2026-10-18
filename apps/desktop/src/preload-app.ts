@@ -64,6 +64,11 @@ function createProductApi(): DshDesktopProductApi {
       get: () => ipcRenderer.invoke(DESKTOP_IPC.notificationsGet) as Promise<DesktopNotificationSettings>,
       set: (category, enabled) => ipcRenderer.invoke(DESKTOP_IPC.notificationsSet, category, enabled) as Promise<void>,
     },
+    onNotifyAction(listener) {
+      const handle = (_event: Electron.IpcRendererEvent, sessionId: string | undefined): void => { listener(sessionId) }
+      ipcRenderer.on(DESKTOP_IPC.notifyAction, handle)
+      return () => { ipcRenderer.off(DESKTOP_IPC.notifyAction, handle) }
+    },
   }
 }
 
