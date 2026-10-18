@@ -1079,6 +1079,18 @@ async function main(): Promise<void> {
     tray?.relabel()
   }
   refreshApplicationMenu()
+  // Native tray reminders: tell the user the app stays resident on startup
+  // and that closing hid it to the tray, whenever the close button hides.
+  const showTrayNotice = (body: string): void => {
+    const iconPath = process.platform === 'win32'
+      ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
+      : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
+    try {
+      new Notification({ title: locale.messages.aboutProduct, body, icon: iconPath, silent: true }).show()
+    } catch (error) {
+      console.warn('desktop tray notice: unavailable', error)
+    }
+  }
   // Linux system trays require a raster icon; Windows uses its multi-size ICO.
   const trayIconPath = process.platform === 'win32'
     ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
@@ -1088,6 +1100,10 @@ async function main(): Promise<void> {
     try {
       tray = new DesktopTray({ iconPath: trayIconPath, locale: currentDesktopLocale,
         open: () => { focusPrimaryWindow() }, quit: () => { app.quit() } })
+      // Startup reminder when the close button keeps the app resident in the tray.
+      if (desktopSettings.window.closeBehavior === 'hide') {
+        showTrayNotice(locale.messages.trayDwellNotice)
+      }
     } catch (error) { console.warn('desktop tray: unavailable', error) }
   }
   const backgroundNotice = process.platform === 'win32'
@@ -1205,7 +1221,11 @@ async function main(): Promise<void> {
         return
       }
       const hide = (): void => {
-        if (!quitting && !shellInstallerOwnsQuit && !sessionEnding && !window.isDestroyed()) hideMainWindow(window)
+        if (!quitting && !shellInstallerOwnsQuit && !sessionEnding && !window.isDestroyed()) {
+          hideMainWindow(window)
+          // Tell the user the window hid to the tray instead of quitting.
+          if (tray !== undefined) showTrayNotice(locale.messages.trayHiddenNotice)
+        }
       }
       if (backgroundNotice === undefined) hide()
       else backgroundNotice.close(hide)
