@@ -29,6 +29,8 @@ export const DESKTOP_IPC = {
   updatesPresentation: 'dsh-desktop:updates-presentation',
   windowCloseBehaviorGet: 'dsh-desktop:window-close-behavior-get',
   windowCloseBehaviorSet: 'dsh-desktop:window-close-behavior-set',
+  notificationsGet: 'dsh-desktop:notifications-get',
+  notificationsSet: 'dsh-desktop:notifications-set',
   notify: 'dsh-desktop:notify',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
@@ -80,6 +82,19 @@ export interface DesktopUpdatePresentation {
 /** Close-button behavior: keep the app in the background tray or exit completely. */
 export type DesktopCloseBehavior = 'hide' | 'quit'
 
+/** Desktop notification categories configurable from the General settings. */
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job'
+
+/** Resolved notification category switches. */
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean>
+
+/** Localized notification payload sent by the web client. */
+export interface DesktopNotifyInput {
+  readonly category: DesktopNotificationCategory
+  readonly title: string
+  readonly body: string
+}
+
 /** Product documents cannot supply update versions, package URLs, or installation authorization. */
 export interface DshDesktopProductApi {
   readonly protocolVersion: 1
@@ -102,10 +117,15 @@ export interface DshDesktopProductApi {
   }
   /**
    * Show a native desktop notification (approval requests, user questions,
-   * finished jobs) while the application window is not focused.
-   * @param input - Localized title and body.
+   * finished jobs) while the application window is not focused. Categories
+   * disabled in the General settings are filtered out here.
+   * @param input - Category plus localized title and body.
    */
-  notify(input: { title: string; body: string }): Promise<void>
+  notify(input: DesktopNotifyInput): Promise<void>
+  readonly notifications: {
+    get(): Promise<DesktopNotificationSettings>
+    set(category: DesktopNotificationCategory, enabled: boolean): Promise<void>
+  }
 }
 
 /** Scheme of Desktop-owned application documents. */

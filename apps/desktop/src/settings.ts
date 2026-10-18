@@ -14,10 +14,31 @@ export interface DesktopSettings {
     /** Behavior of the window close button: hide to the tray or quit. */
     readonly closeBehavior: DesktopCloseBehavior
   }
+  readonly notifications: {
+    /** Desktop notifications when the model requests permission approval. */
+    readonly approval: boolean
+    /** Desktop notifications when the model asks the user a question. */
+    readonly question: boolean
+    /** Desktop notifications when a background job settles. */
+    readonly job: boolean
+  }
 }
 
 /** Close-button behavior: keep the app in the background tray or exit completely. */
 export type DesktopCloseBehavior = 'hide' | 'quit'
+
+/** Notification categories that can be toggled from the General settings. */
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job'
+
+/** Resolved notification category switches, all enabled by default. */
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean>
+
+/** Every notification category with its default-enabled state. */
+export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {
+  approval: true,
+  question: true,
+  job: true,
+}
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -31,7 +52,11 @@ function record(value: unknown): value is Record<string, unknown> {
 export function readDesktopSettings(userData: string): DesktopSettings {
   const directory = join(userData, 'desktop')
   const path = join(directory, 'settings.json')
-  const defaults: DesktopSettings = { updates: { allowTestAuthPopupWindow: false }, window: { closeBehavior: 'hide' } }
+  const defaults: DesktopSettings = {
+    updates: { allowTestAuthPopupWindow: false },
+    window: { closeBehavior: 'hide' },
+    notifications: { ...DESKTOP_NOTIFICATION_DEFAULTS },
+  }
   try {
     let raw: string
     try { raw = readFileSync(path, 'utf8') } catch (error) {
@@ -58,9 +83,21 @@ export function readDesktopSettings(userData: string): DesktopSettings {
     if (closeBehavior !== undefined && closeBehavior !== 'hide' && closeBehavior !== 'quit') {
       throw new Error('window.closeBehavior must be "hide" or "quit"')
     }
+    if (value.notifications !== undefined && !record(value.notifications)) {
+      throw new Error('notifications must be an object')
+    }
+    const notifications: DesktopNotificationSettings = { ...DESKTOP_NOTIFICATION_DEFAULTS }
+    for (const category of ['approval', 'question', 'job'] as const) {
+      const enabled = value.notifications?.[category]
+      if (enabled !== undefined && typeof enabled !== 'boolean') {
+        throw new Error(`notifications.${category} must be true or false`)
+      }
+      notifications[category] = enabled ?? true
+    }
     return {
       updates: { allowTestAuthPopupWindow: allow ?? false },
       window: { closeBehavior: closeBehavior ?? 'hide' },
+      notifications,
     }
   } catch (error) {
     try {

@@ -36,6 +36,18 @@ export interface DesktopCloseBehaviorBridge {
   set(behavior: DesktopCloseBehavior): Promise<void>
 }
 
+/** Desktop notification categories configurable from the General settings. */
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job'
+
+/** Resolved notification category switches. */
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean>
+
+/** Optional carrier API for the desktop notification category switches. */
+export interface DesktopNotificationsBridge {
+  get(): Promise<DesktopNotificationSettings>
+  set(category: DesktopNotificationCategory, enabled: boolean): Promise<void>
+}
+
 /** Shared carrier status for the account row and collapsed sidebar badge. */
 export interface DesktopUpdateView {
   readonly presentation?: DesktopUpdatePresentation

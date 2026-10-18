@@ -53,7 +53,7 @@ import { DesktopMandatoryUpdatePolicy, resolveDesktopPolicyConfig, type DesktopP
 import { desktopClientMetadata, desktopClientVersion } from './client-metadata.ts'
 import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
-import { readDesktopSettings, writeDesktopSettings, type DesktopCloseBehavior } from './settings.ts'
+import { readDesktopSettings, writeDesktopSettings, type DesktopCloseBehavior, type DesktopNotificationCategory, type DesktopNotificationSettings } from './settings.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
@@ -838,14 +838,17 @@ async function main(): Promise<void> {
   // Native desktop notifications for approvals, questions, and finished jobs.
   // The in-app panels already cover focused use, so the notification only
   // fires while the primary window is not focused (hidden or backgrounded).
+  // Categories disabled in the General settings are filtered out here.
   ipcMain.handle(DESKTOP_IPC.notify, (event, input: unknown) => {
     assertProductSender(event)
     if (typeof input !== 'object' || input === null
       || typeof (input as { title?: unknown }).title !== 'string'
-      || typeof (input as { body?: unknown }).body !== 'string') {
-      throw new Error('desktop notify: title and body must be strings')
+      || typeof (input as { body?: unknown }).body !== 'string'
+      || !(['approval', 'question', 'job'] as const).includes((input as { category?: unknown }).category as 'approval' | 'question' | 'job')) {
+      throw new Error('desktop notify: title, body and category are required')
     }
-    const { title, body } = input as { title: string; body: string }
+    const { category, title, body } = input as { category: DesktopNotificationCategory; title: string; body: string }
+    if (!desktopSettings.notifications[category]) return
     if (mainWindow?.isFocused()) return
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
@@ -855,6 +858,24 @@ async function main(): Promise<void> {
     } catch (error) {
       console.warn('desktop notification: unavailable', error)
     }
+  })
+
+  // Notification category switches owned by the Electron shell settings.
+  ipcMain.handle(DESKTOP_IPC.notificationsGet, (event) => {
+    assertProductSender(event)
+    return desktopSettings.notifications satisfies DesktopNotificationSettings
+  })
+  ipcMain.handle(DESKTOP_IPC.notificationsSet, (event, category: unknown, enabled: unknown) => {
+    assertProductSender(event)
+    if (category !== 'approval' && category !== 'question' && category !== 'job') {
+      throw new Error('desktop notifications: unknown category')
+    }
+    if (typeof enabled !== 'boolean') throw new Error('desktop notifications: enabled must be true or false')
+    desktopSettings = {
+      ...desktopSettings,
+      notifications: { ...desktopSettings.notifications, [category]: enabled },
+    }
+    writeDesktopSettings(app.getPath('userData'), desktopSettings)
   })
 
   let promptOperation: Promise<void> | undefined

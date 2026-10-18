@@ -24,8 +24,9 @@ it('creates a discoverable default file on first launch without touching other p
   writeFileSync(join(userData, 'keybindings.json'), 'existing shortcuts\n')
   expect(readDesktopSettings(userData)).toEqual({
     updates: { allowTestAuthPopupWindow: false }, window: { closeBehavior: 'hide' },
+    notifications: { approval: true, question: true, job: true },
   })
-  expect(readFileSync(path, 'utf8')).toBe('{\n  "updates": {\n    "allowTestAuthPopupWindow": false\n  },\n  "window": {\n    "closeBehavior": "hide"\n  }\n}\n')
+  expect(readFileSync(path, 'utf8')).toBe('{\n  "updates": {\n    "allowTestAuthPopupWindow": false\n  },\n  "window": {\n    "closeBehavior": "hide"\n  },\n  "notifications": {\n    "approval": true,\n    "question": true,\n    "job": true\n  }\n}\n')
   expect(readFileSync(join(userData, 'keybindings.json'), 'utf8')).toBe('existing shortcuts\n')
 })
 
@@ -42,6 +43,14 @@ it('loads an explicit close-button behavior on the next read', () => {
   writeFileSync(path, '{"window":{"closeBehavior":"quit"}}')
   expect(readDesktopSettings(userData).window.closeBehavior).toBe('quit')
   expect(readFileSync(path, 'utf8')).toBe('{"window":{"closeBehavior":"quit"}}')
+})
+
+it('loads notification category switches with defaults for absent categories', () => {
+  const { userData, path } = fixture()
+  writeFileSync(path, '{"notifications":{"job":false}}')
+  const settings = readDesktopSettings(userData)
+  expect(settings.notifications).toEqual({ approval: true, question: true, job: false })
+  expect(readFileSync(path, 'utf8')).toBe('{"notifications":{"job":false}}')
 })
 
 it('persists settings with writeDesktopSettings', () => {
@@ -68,7 +77,8 @@ it('loads explicit opt-in and opt-out on the next read without changing an earli
 
 it.each(['', '{', 'null', '[]', '{"updates":null}', '{"updates":[]}',
   '{"updates":{"allowTestAuthPopupWindow":"false"}}', '{"updates":{"allowTestAuthPopupWindow":1}}',
-  '{"updates":{"allowTestAuthPopupWindow":null}}', '{"window":[]}', '{"window":{"closeBehavior":"maximize"}}'])('reports invalid settings with their path and preserves the original: %s', (raw) => {
+  '{"updates":{"allowTestAuthPopupWindow":null}}', '{"window":[]}', '{"window":{"closeBehavior":"maximize"}}',
+  '{"notifications":[]}', '{"notifications":{"approval":"true"}}'])('reports invalid settings with their path and preserves the original: %s', (raw) => {
   const { userData, path } = fixture()
   writeFileSync(path, raw)
   expect(readDesktopSettings(userData).updates.allowTestAuthPopupWindow).toBe(false)

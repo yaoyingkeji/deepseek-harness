@@ -18,15 +18,16 @@ import { en, NS, zh, type JobKey } from './locales.ts'
 /**
  * Fire a native desktop notification through the Electron shell bridge when
  * present; ordinary browsers and focused windows are handled by the shell.
+ * @param category - Notification category (filtered by the General settings).
  * @param titleZh - Chinese notification title.
  * @param bodyZh - Chinese notification body.
  * @param titleEn - English notification title.
  * @param bodyEn - English notification body.
  */
-function desktopNotify(titleZh: string, bodyZh: string, titleEn: string, bodyEn: string): void {
+function desktopNotify(category: 'approval' | 'question' | 'job', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string): void {
   const zh = (document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-  void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { title: string; body: string }) => Promise<void> } })
-    .dshDesktop?.notify?.({ title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn })
+  void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'approval' | 'question' | 'job'; title: string; body: string }) => Promise<void> } })
+    .dshDesktop?.notify?.({ category, title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn })
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -61,6 +62,7 @@ export function apply(ctx: ClientContext): void {
           && (job.status === 'completed' || job.status === 'failed')) {
           const finished = job.status === 'completed'
           desktopNotify(
+            'job',
             finished ? '任务完成' : '任务失败',
             `${job.label} ${finished ? '已完成' : '已失败'}`,
             finished ? 'Task finished' : 'Task failed',
