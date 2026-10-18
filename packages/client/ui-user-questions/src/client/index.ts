@@ -32,6 +32,20 @@ import { questionReplyDefinition } from './question-reply.ts'
 import { QuestionReplyView } from './QuestionReplyView.tsx'
 import { en, zh, type QuestionKey } from './locales.ts'
 
+/**
+ * Fire a native desktop notification through the Electron shell bridge when
+ * present; ordinary browsers and focused windows are handled by the shell.
+ * @param titleZh - Chinese notification title.
+ * @param bodyZh - Chinese notification body.
+ * @param titleEn - English notification title.
+ * @param bodyEn - English notification body.
+ */
+function desktopNotify(titleZh: string, bodyZh: string, titleEn: string, bodyEn: string): void {
+  const zh = (document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+  void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { title: string; body: string }) => Promise<void> } })
+    .dshDesktop?.notify?.({ title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn })
+}
+
 export type {
   PendingQuestion, PlanReview, QuestionAnswer, QuestionComposerProps, QuestionWait,
 } from './contract/slots.ts'
@@ -398,6 +412,14 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
   }, QuestionReplyView))
   ctx.remote.$on('user-questions/request', function (request, next) {
+    // Background questions need a desktop notification; the composer covers focused use.
+    const first = request.questions[0]
+    desktopNotify(
+      '模型需要向您提问',
+      first === undefined ? '请打开 DeepSeek Harness 查看问题' : first.question,
+      'Question from the model',
+      first === undefined ? 'Open DeepSeek Harness to answer' : first.question,
+    )
     return answerQuestion(ctx, this, request, next, cards)
   })
 }

@@ -59,6 +59,7 @@ function createProductApi(): DshDesktopProductApi {
       get: () => ipcRenderer.invoke(DESKTOP_IPC.windowCloseBehaviorGet) as Promise<DesktopCloseBehavior>,
       set: behavior => ipcRenderer.invoke(DESKTOP_IPC.windowCloseBehaviorSet, behavior) as Promise<void>,
     },
+    notify: input => ipcRenderer.invoke(DESKTOP_IPC.notify, input) as Promise<void>,
   }
 }
 

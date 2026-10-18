@@ -29,6 +29,7 @@ export const DESKTOP_IPC = {
   updatesPresentation: 'dsh-desktop:updates-presentation',
   windowCloseBehaviorGet: 'dsh-desktop:window-close-behavior-get',
   windowCloseBehaviorSet: 'dsh-desktop:window-close-behavior-set',
+  notify: 'dsh-desktop:notify',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
   windowMaximized: 'dsh-desktop:window-maximized',
@@ -99,6 +100,12 @@ export interface DshDesktopProductApi {
     get(): Promise<DesktopCloseBehavior>
     set(behavior: DesktopCloseBehavior): Promise<void>
   }
+  /**
+   * Show a native desktop notification (approval requests, user questions,
+   * finished jobs) while the application window is not focused.
+   * @param input - Localized title and body.
+   */
+  notify(input: { title: string; body: string }): Promise<void>
 }
 
 /** Scheme of Desktop-owned application documents. */

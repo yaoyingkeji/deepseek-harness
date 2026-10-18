@@ -19,6 +19,7 @@ import {
   protocol,
   session,
   shell,
+  Notification,
   type IpcMainInvokeEvent,
   type MenuItemConstructorOptions,
 } from 'electron'
@@ -832,6 +833,28 @@ async function main(): Promise<void> {
     const next: DesktopCloseBehavior = behavior
     desktopSettings = { ...desktopSettings, window: { closeBehavior: next } }
     writeDesktopSettings(app.getPath('userData'), desktopSettings)
+  })
+
+  // Native desktop notifications for approvals, questions, and finished jobs.
+  // The in-app panels already cover focused use, so the notification only
+  // fires while the primary window is not focused (hidden or backgrounded).
+  ipcMain.handle(DESKTOP_IPC.notify, (event, input: unknown) => {
+    assertProductSender(event)
+    if (typeof input !== 'object' || input === null
+      || typeof (input as { title?: unknown }).title !== 'string'
+      || typeof (input as { body?: unknown }).body !== 'string') {
+      throw new Error('desktop notify: title and body must be strings')
+    }
+    const { title, body } = input as { title: string; body: string }
+    if (mainWindow?.isFocused()) return
+    const iconPath = process.platform === 'win32'
+      ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
+      : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
+    try {
+      new Notification({ title, body, icon: iconPath, silent: false }).show()
+    } catch (error) {
+      console.warn('desktop notification: unavailable', error)
+    }
   })
 
   let promptOperation: Promise<void> | undefined

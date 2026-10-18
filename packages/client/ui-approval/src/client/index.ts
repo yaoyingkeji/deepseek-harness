@@ -12,6 +12,20 @@ import { ApprovalPanel } from './ApprovalPanel.tsx'
 import { PendingApproval } from './contract/slots.ts'
 import { en, zh } from './locales.ts'
 
+/**
+ * Fire a native desktop notification through the Electron shell bridge when
+ * present; ordinary browsers and focused windows are handled by the shell.
+ * @param titleZh - Chinese notification title.
+ * @param bodyZh - Chinese notification body.
+ * @param titleEn - English notification title.
+ * @param bodyEn - English notification body.
+ */
+function desktopNotify(titleZh: string, bodyZh: string, titleEn: string, bodyEn: string): void {
+  const zh = (document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+  void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { title: string; body: string }) => Promise<void> } })
+    .dshDesktop?.notify?.({ title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn })
+}
+
 export type {
   ApprovalComposerProps,
   ApprovalDecision,
@@ -102,6 +116,8 @@ export function apply(ctx: ClientContext): void {
     },
   }, ApprovalPanel))
   ctx.remote.$on('approval/request', function (request, next) {
+    // Background approvals need a desktop notification; the panel covers focused use.
+    desktopNotify('需要审核权限', `${request.toolName} 需要您授权`, 'Approval required', `${request.toolName} requires your approval`)
     return answerApproval(ctx, this, request, next, registerPendingInteraction)
   })
 }
