@@ -31,7 +31,7 @@ import type { ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client
 import { createSettingsShellStore } from './shell-store.ts'
 import { SettingsRoot } from './SettingsRoot.tsx'
 import { DesktopUpdateBadge } from './DesktopUpdateIndicator.tsx'
-import type { DesktopCloseBehaviorBridge, DesktopNotificationsBridge, DesktopUpdateBridge } from '../types.ts'
+import type { DesktopCloseBehaviorBridge, DesktopNotificationCategory, DesktopNotificationsBridge, DesktopUpdateBridge } from '../types.ts'
 import { DesktopUpdateSource } from './desktop-update-source.ts'
 import { CloseLabel, HeaderContent, TriggerContent } from './chrome.tsx'
 import { GeneralSection } from './GeneralSection.tsx'
@@ -95,10 +95,44 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-general: dictionaries')
   const connection = ctx.get('connection') as ConnectionHandle
   const carrier = (globalThis as typeof globalThis & {
-    dshDesktop?: { protocolVersion: number; updates?: DesktopUpdateBridge; closeBehavior?: DesktopCloseBehaviorBridge; notifications?: DesktopNotificationsBridge }
+    dshDesktop?: {
+      protocolVersion: number
+      updates?: DesktopUpdateBridge
+      closeBehavior?: DesktopCloseBehaviorBridge
+      notifications?: DesktopNotificationsBridge
+      onNotifyAction?: (listener: (sessionId: string | undefined) => void) => () => void
+    }
   }).dshDesktop
   const desktopUpdate = new DesktopUpdateSource(carrier?.protocolVersion === 1 ? carrier.updates : undefined)
   ctx.effect(() => () => { desktopUpdate.dispose() }, 'ui-settings-general: desktop update carrier')
+
+  // Notification triggers for categories without a feature-owned hook: the
+  // model needing credentials or a sign-in. Subagent completion and remote
+  // authorization stay off by default with the framework in place; their host
+  // events are scoped and not yet bridgeable over the remote event carrier.
+  const notifyDesktop = (
+    category: DesktopNotificationCategory,
+    titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string,
+  ): void => {
+    const zh = (document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: DesktopNotificationCategory; title: string; body: string; sessionId?: string }) => Promise<void> } })
+      .dshDesktop?.notify?.({ category, title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn, ...(sessionId === undefined ? {} : { sessionId }) })
+  }
+  ctx.remote.$on('deepseek-account/model-sign-in-required', () => {
+    notifyDesktop('credential', '凭证需要', '模型需要登录，请提供凭证',
+      'Credentials needed', 'The model needs to sign in — please provide credentials')
+  })
+
+  // Notification clicks surface the owning session: the shell already focuses
+  // the window; here we switch the workspace to that session so its pending
+  // approval or question panel is visible.
+  const uiWorkspace = ctx.get('uiWorkspace') as { openSession(target: string): void } | undefined
+  const stopNotifyAction = carrier?.protocolVersion === 1
+    ? carrier.onNotifyAction?.((sessionId) => {
+      if (sessionId !== undefined) uiWorkspace?.openSession(sessionId)
+    })
+    : undefined
+  ctx.effect(() => () => { stopNotifyAction?.() }, 'ui-settings-general: notification action carrier')
   // The close-button behavior lives in the Electron shell settings; Web builds hide the row.
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item', id: 'close-behavior', order: 10, locale: NS,
