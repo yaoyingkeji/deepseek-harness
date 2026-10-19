@@ -14,14 +14,7 @@ export interface DesktopSettings {
     /** Behavior of the window close button: hide to the tray or quit. */
     readonly closeBehavior: DesktopCloseBehavior
   }
-  readonly notifications: {
-    /** Desktop notifications when the model requests permission approval. */
-    readonly approval: boolean
-    /** Desktop notifications when the model asks the user a question. */
-    readonly question: boolean
-    /** Desktop notifications when a background job settles. */
-    readonly job: boolean
-  }
+  readonly notifications: DesktopNotificationSettings
 }
 
 /** Close-button behavior: keep the app in the background tray or exit completely. */
