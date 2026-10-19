@@ -26,6 +26,7 @@ import type { TypertForwardableEventEntry } from '@deepseek-ai/dsh-typert-protoc
 export const API_REMOTE_FORWARDED_EVENTS = [
   { event: 'agent-preset/selected', mode: 'emit' },
   { event: 'approval/request', mode: 'waterfall' },
+  { event: 'subagent/finished', mode: 'emit' },
   { event: 'api-session/activity', mode: 'emit', resources: { session: (sessionId): SessionId => sessionId } },
   { event: 'api-session/added', mode: 'emit', resources: { session: (summary): SessionId => summary.sessionId } },
   { event: 'api-session/error', mode: 'emit', resources: { session: (sessionId): SessionId => sessionId } },

@@ -82,6 +82,21 @@ export function createLifecycleEmitter(
         ctx.logger.warn(`subagent: ${name} listener threw: ${renderThrown(error)}`)
       }
     }
+    // The scoped lifecycle edge cannot cross the remote event carrier, so a
+    // finished subagent also publishes an unscoped completion notification
+    // that desktop notifications can subscribe to.
+    if (name === 'subagent/end') {
+      for (const callback of ctx.events.dispatch('emit', ['subagent/finished', info])) {
+        try {
+          const returned: unknown = callback(info)
+          void Promise.resolve(returned).catch((error: unknown) => {
+            ctx.logger.warn(`subagent: finished listener rejected: ${renderThrown(error)}`)
+          })
+        } catch (error: unknown) {
+          ctx.logger.warn(`subagent: finished listener threw: ${renderThrown(error)}`)
+        }
+      }
+    }
   }
 }
 

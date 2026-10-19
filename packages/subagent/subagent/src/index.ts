@@ -164,6 +164,15 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'subagent/end'(this: Scoped<SubagentRuntime>, info: SubagentRunEndInfo): void
+    /**
+     * Unscoped completion notification published alongside `subagent/end` so
+     * the remote event carrier can forward it to client consumers (desktop
+     * notifications). The scoped pair stays authoritative for listeners that
+     * need parent context.
+     * @param info - the run identity and terminal outcome.
+     * @mode emit
+     */
+    'subagent/finished'(info: SubagentRunEndInfo): void
   }
 }
 

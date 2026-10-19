@@ -118,6 +118,11 @@ export function apply(ctx: ClientContext): void {
     void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: DesktopNotificationCategory; title: string; body: string; sessionId?: string }) => Promise<void> } })
       .dshDesktop?.notify?.({ category, title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn, ...(sessionId === undefined ? {} : { sessionId }) })
   }
+  ctx.remote.$on('subagent/finished', (info) => {
+    const value = info as { provider?: string; id?: string }
+    notifyDesktop('subagent', '子代理结束', `${value.provider ?? '子代理'} 已完成`,
+      'Subagent finished', `${value.provider ?? 'Subagent'} finished`, value.id)
+  })
   ctx.remote.$on('deepseek-account/model-sign-in-required', () => {
     notifyDesktop('credential', '凭证需要', '模型需要登录，请提供凭证',
       'Credentials needed', 'The model needs to sign in — please provide credentials')
