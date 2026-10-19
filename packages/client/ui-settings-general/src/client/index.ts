@@ -11,6 +11,7 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // Type-only: pulls the ctx.remote merge and its fixed Host facts.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/remote-events'
 import type {} from '@deepseek-ai/dsh-subagent'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 // Type-only: pulls the ctx.modules merge.
@@ -127,6 +128,14 @@ export function apply(ctx: ClientContext): void {
   ctx.remote.$on('deepseek-account/model-sign-in-required', () => {
     notifyDesktop('credential', '凭证需要', '模型需要登录，请提供凭证',
       'Credentials needed', 'The model needs to sign in — please provide credentials')
+  })
+  // Remote/remote-access authorization has no dedicated host request event in
+  // the current version, so this category uses the real, forwardable
+  // `api-session/added` (a new session, including remote ones, joining).
+  ctx.remote.$on('api-session/added', (summary) => {
+    const value = summary as { sessionId?: string }
+    notifyDesktop('remote', '新会话接入', '有新的会话（含远程接入）加入，请打开查看',
+      'New session joined', 'A new session (including remote ones) joined — open to view', value.sessionId)
   })
 
   // Notification clicks surface the owning session: the shell already focuses
