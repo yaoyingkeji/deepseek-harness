@@ -840,7 +840,8 @@ async function main(): Promise<void> {
     if (typeof input !== 'object' || input === null
       || typeof (input as { title?: unknown }).title !== 'string'
       || typeof (input as { body?: unknown }).body !== 'string'
-      || !(['approval', 'question', 'job'] as const).includes((input as { category?: unknown }).category as 'approval' | 'question' | 'job')) {
+      || !(['approval', 'question', 'job', 'subagent', 'credential', 'remote'] as const)
+        .includes((input as { category?: unknown }).category as DesktopNotificationCategory)) {
       throw new Error('desktop notify: title, body and category are required')
     }
     const { category, title, body } = input as { category: DesktopNotificationCategory; title: string; body: string }

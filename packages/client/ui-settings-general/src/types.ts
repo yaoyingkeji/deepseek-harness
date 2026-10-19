@@ -37,10 +37,13 @@ export interface DesktopCloseBehaviorBridge {
 }
 
 /** Desktop notification categories configurable from the General settings. */
-export type DesktopNotificationCategory = 'approval' | 'question' | 'job'
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote'
 
 /** Resolved notification category switches. */
 export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean>
+
+/** Categories off by default because they can flood the user with notices. */
+export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote']
 
 /** Optional carrier API for the desktop notification category switches. */
 export interface DesktopNotificationsBridge {

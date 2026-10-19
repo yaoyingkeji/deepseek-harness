@@ -84,7 +84,7 @@ export interface DesktopUpdatePresentation {
 export type DesktopCloseBehavior = 'hide' | 'quit'
 
 /** Desktop notification categories configurable from the General settings. */
-export type DesktopNotificationCategory = 'approval' | 'question' | 'job'
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote'
 
 /** Resolved notification category switches. */
 export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean>
