@@ -17,6 +17,7 @@
     "src/loopback-hostname.ts",
     "src/peer.ts",
     "src/recovery-config.ts",
+    "src/remote-connection-request.ts",
     "src/rpc-host.ts",
     "src/rpc-schema.ts",
     "src/rpc.ts"

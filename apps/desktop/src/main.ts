@@ -877,14 +877,15 @@ async function main(): Promise<void> {
   })
   ipcMain.handle(DESKTOP_IPC.notificationsSet, (event, category: unknown, enabled: unknown) => {
     assertProductSender(event)
-    if (!(['approval', 'question', 'job', 'subagent', 'credential', 'remote'] as const)
-      .includes(category as DesktopNotificationCategory)) {
+    const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote'] as const
+    if (!categories.includes(category as typeof categories[number])) {
       throw new Error('desktop notifications: unknown category')
     }
     if (typeof enabled !== 'boolean') throw new Error('desktop notifications: enabled must be true or false')
+    const typedCategory = category as DesktopNotificationCategory
     desktopSettings = {
       ...desktopSettings,
-      notifications: { ...desktopSettings.notifications, [category]: enabled },
+      notifications: { ...desktopSettings.notifications, [typedCategory]: enabled },
     }
     writeDesktopSettings(app.getPath('userData'), desktopSettings)
   })
