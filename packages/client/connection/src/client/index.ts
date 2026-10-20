@@ -1,5 +1,6 @@
 /** Browser wire client: Remote transport and connection generations. */
 import type { Context } from '@deepseek-ai/cordis'
+// Pulls the `connection/remote-requested` event declaration into the client face.
 import {
   ConnectionController,
   type ConnectionRecoveryConfig,

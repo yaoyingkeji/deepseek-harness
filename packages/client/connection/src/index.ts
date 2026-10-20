@@ -13,7 +13,6 @@ import { assertTrustedAuthority } from './api-request-trust.ts'
 import { BrowserAuth } from './browser-auth.ts'
 import { HostConnectionService } from './rpc-host.ts'
 import { ConnectionRecoveryConfigSchema, resolveConnectionConfig, type ConnectionRecoveryConfig } from './recovery-config.ts'
-import type { RemoteConnectionRequest } from './remote-connection-request.ts'
 
 export type {
   PeerAdmission,

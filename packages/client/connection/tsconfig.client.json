@@ -16,6 +16,7 @@
     "src/connect-protocol.ts",
     "src/loopback-hostname.ts",
     "src/recovery-config.ts",
+    "src/remote-connection-request.ts",
     "src/rpc.ts"
   ],
   "references": [
