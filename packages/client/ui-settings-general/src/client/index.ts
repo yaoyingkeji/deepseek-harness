@@ -138,8 +138,8 @@ export function apply(ctx: ClientContext): void {
   ctx.remote.$on('connection/remote-requested', (request) => {
     const value = request as { authority?: string }
     const authority = value.authority ?? ''
-    notifyDesktop('remote', '远程接入请求', `${authority} 请求接入本机，请确认是否允许`,
-      'Remote access request', `${authority} asked to connect to this machine — please confirm`,
+    notifyDesktop('remote', '远程接入请求', authority + ' 请求接入本机，请确认是否允许',
+      'Remote access request', authority + ' asked to connect to this machine - please confirm',
       undefined)
   })
 
