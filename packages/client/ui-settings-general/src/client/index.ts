@@ -124,8 +124,10 @@ export function apply(ctx: ClientContext): void {
   }
   ctx.remote.$on('subagent/finished', (info) => {
     const value = info as { provider?: string; id?: string }
-    notifyDesktop('subagent', '子代理结束', `${value.provider ?? '子代理'} 已完成`,
-      'Subagent finished', `${value.provider ?? 'Subagent'} finished', value.id)
+    const providerZh = value.provider ?? '子代理'
+    const providerEn = value.provider ?? 'Subagent'
+    notifyDesktop('subagent', '子代理结束', providerZh + ' 已完成',
+      'Subagent finished', providerEn + ' finished', value.id)
   })
   ctx.remote.$on('deepseek-account/model-sign-in-required', () => {
     notifyDesktop('credential', '凭证需要', '模型需要登录，请提供凭证',
