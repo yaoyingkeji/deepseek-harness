@@ -56,14 +56,14 @@ export function DesktopNotificationsRow({ bridge, t }:
     }).finally(() => { setBusy(false) })
   }
   const allOn = CATEGORIES.every(category => settings[category])
-  const applyAllOn = (): void => {
+  const applyAll = (): void => {
     touched.current = true
     setFailed(false)
     setBusy(true)
     const previous = settings
-    const next = Object.fromEntries(CATEGORIES.map(category => [category, true])) as DesktopNotificationSettings
+    const next = Object.fromEntries(CATEGORIES.map(category => [category, !allOn])) as DesktopNotificationSettings
     setSettings(next)
-    Promise.all(CATEGORIES.map(category => bridge.set(category, true))).catch(() => {
+    Promise.all(CATEGORIES.map(category => bridge.set(category, !allOn))).catch(() => {
       setFailed(true)
       setSettings(previous)
     }).finally(() => { setBusy(false) })
@@ -75,9 +75,9 @@ export function DesktopNotificationsRow({ bridge, t }:
           <div className={css.title}>{t('notifications.title')}</div>
           <div className={css.description}>{t('notifications.description')}</div>
         </div>
-        <button type="button" className={css.allToggle} disabled={busy || allOn}
-          onClick={() => { void applyAllOn() }}>
-          {t('notifications.allOn')}
+        <button type="button" className={css.allToggle} disabled={busy}
+          onClick={() => { void applyAll() }}>
+          {allOn ? t('notifications.allOff') : t('notifications.allOn')}
         </button>
       </div>
       {failed && <div role="alert">{t('notifications.error')}</div>}

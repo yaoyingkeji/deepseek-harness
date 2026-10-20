@@ -13,6 +13,7 @@ import { assertTrustedAuthority } from './api-request-trust.ts'
 import { BrowserAuth } from './browser-auth.ts'
 import { HostConnectionService } from './rpc-host.ts'
 import { ConnectionRecoveryConfigSchema, resolveConnectionConfig, type ConnectionRecoveryConfig } from './recovery-config.ts'
+import type { RemoteConnectionRequest } from './remote-connection-request.ts'
 
 export type {
   PeerAdmission,
@@ -43,6 +44,7 @@ export { RpcId, transportError } from './rpc.ts'
 export { Peer } from './peer.ts'
 export type { PeerOptions } from './peer.ts'
 export { CONNECT_PATH, type ConnectionInteractions } from './connect-protocol.ts'
+export type { RemoteConnectionRequest } from './remote-connection-request.ts'
 export {
   clientRequestSchema,
   rpcErrorSchema,
@@ -69,6 +71,17 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'connection/request'(request: IncomingMessage, response: ServerResponse, next: () => Promise<void>): Promise<void>
+    /**
+     * A caller outside this machine asked to connect and was admitted.
+     *
+     * This is the remote-connection request itself, not a proxy for it: a new
+     * local Session, a new subagent, or any other local activity never emits
+     * it. The authority names the host the request came from; the Peer is the
+     * one the admission produced.
+     * @param request - Admitted connection facts.
+     * @mode emit
+     */
+    'connection/remote-requested'(request: RemoteConnectionRequest): void
   }
 }
 

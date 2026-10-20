@@ -13,8 +13,11 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/remote-events'
 import type {} from '@deepseek-ai/dsh-subagent'
+// Type-only: pulls the connection/remote-requested Cordis event declaration.
+import type {} from '@deepseek-ai/dsh-client-connection'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 // Type-only: pulls the ctx.modules merge.
+import type {} from '@deepseek-ai/dsh-client-modules/client'
 import type {} from '@deepseek-ai/dsh-client-modules/client'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { closeTopModal } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -109,9 +112,8 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => () => { desktopUpdate.dispose() }, 'ui-settings-general: desktop update carrier')
 
   // Notification triggers for categories without a feature-owned hook: the
-  // model needing credentials or a sign-in. Subagent completion and remote
-  // authorization stay off by default with the framework in place; their host
-  // events are scoped and not yet bridgeable over the remote event carrier.
+  // model needing credentials or a sign-in, the remote-connection request the
+  // Host admits, and the completion of a delegated subagent.
   const notifyDesktop = (
     category: DesktopNotificationCategory,
     titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string,
@@ -123,28 +125,41 @@ export function apply(ctx: ClientContext): void {
   ctx.remote.$on('subagent/finished', (info) => {
     const value = info as { provider?: string; id?: string }
     notifyDesktop('subagent', '子代理结束', `${value.provider ?? '子代理'} 已完成`,
-      'Subagent finished', `${value.provider ?? 'Subagent'} finished`, value.id)
+      'Subagent finished', `${value.provider ?? 'Subagent'} finished', value.id)
   })
   ctx.remote.$on('deepseek-account/model-sign-in-required', () => {
     notifyDesktop('credential', '凭证需要', '模型需要登录，请提供凭证',
       'Credentials needed', 'The model needs to sign in — please provide credentials')
   })
-  // Remote/remote-access authorization has no dedicated host request event in
-  // the current version, so this category uses the real, forwardable
-  // `api-session/added` (a new session, including remote ones, joining).
-  ctx.remote.$on('api-session/added', (summary) => {
-    const value = summary as { sessionId?: string }
-    notifyDesktop('remote', '新会话接入', '有新的会话（含远程接入）加入，请打开查看',
-      'New session joined', 'A new session (including remote ones) joined — open to view', value.sessionId)
+  // The remote category is driven by the Host's own remote-connection
+  // request event: a caller outside this machine asked to connect and was
+  // admitted. A new local session, a subagent, or any other local activity
+  // never produces this event, so it cannot stand in for a remote request.
+  ctx.remote.$on('connection/remote-requested', (request) => {
+    const value = request as { authority?: string }
+    const authority = value.authority ?? ''
+    notifyDesktop('remote', '远程接入请求', `${authority} 请求接入本机，请确认是否允许`,
+      'Remote access request', `${authority} asked to connect to this machine — please confirm`,
+      undefined)
   })
 
-  // Notification clicks surface the owning session: the shell already focuses
-  // the window; here we switch the workspace to that session so its pending
-  // approval or question panel is visible.
-  const uiWorkspace = ctx.get('uiWorkspace') as { openSession(target: string): void } | undefined
+  // Notification clicks surface the owning session or the relevant settings
+  // view. The shell already focuses the window; here we switch the workspace
+  // to that session so its pending approval or question panel is visible.
+  // uiWorkspace is provided by ui-workspace which loads after this plugin, so
+  // read it at click time (runtime) rather than caching it at apply time.
   const stopNotifyAction = carrier?.protocolVersion === 1
     ? carrier.onNotifyAction?.((sessionId) => {
-      if (sessionId !== undefined) uiWorkspace?.openSession(sessionId)
+      if (sessionId !== undefined) {
+        const uiWorkspace = ctx.get('uiWorkspace') as { openSession(target: string): void } | undefined
+        uiWorkspace?.openSession(sessionId)
+        return
+      }
+      // No session attached: for credential/remote notices, open settings so
+      // the user can act on the request.
+      const shellHandle = createSettingsShellStore()
+      const shellInstance = shellHandle.create()
+      shellInstance.actions.open()
     })
     : undefined
   ctx.effect(() => () => { stopNotifyAction?.() }, 'ui-settings-general: notification action carrier')

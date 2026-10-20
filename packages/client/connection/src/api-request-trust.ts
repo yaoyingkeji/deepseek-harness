@@ -22,6 +22,15 @@ function header(headers: ConnectionTrustRequest['headers'], name: string): strin
 }
 
 /**
+ * The authority one request names, taken verbatim from its `Host` header.
+ * @param request - request facts carrying the headers.
+ * @returns the authority text, or undefined when the request carries none.
+ */
+export function requestAuthority(request: ConnectionTrustRequest): string | undefined {
+  return header(request.headers, 'host')
+}
+
+/**
  * Normalized URL of a bare authority (hostname lowercased, default port
  * stripped, IPv6 bracketed), or undefined when unparsable.
  * @param authority - `host` or `host:port` text.

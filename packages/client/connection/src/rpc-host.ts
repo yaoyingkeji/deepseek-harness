@@ -11,7 +11,9 @@ import {
 } from './rpc.ts'
 import { clientRequestSchema } from './rpc-schema.ts'
 import { bridge } from './http-bridge.ts'
-import { isRemoteAuthority, isTrustedApiRequest } from './api-request-trust.ts'
+import { isRemoteAuthority, isTrustedApiRequest, requestAuthority } from './api-request-trust.ts'
+import { isLoopbackHostname } from './loopback-hostname.ts'
+import type { RemoteConnectionRequest } from './remote-connection-request.ts'
 import { API_PATH } from './api-path.ts'
 import type { BrowserAuth } from './browser-auth.ts'
 import { Peer } from './peer.ts'
@@ -149,6 +151,10 @@ export class HostConnectionService extends Service implements HostConnectionHand
     if (record === undefined) return { ...admission, release: () => Promise.resolve() }
     if (record.ownsSocket) return { rejection: 409 }
     record.ownsSocket = true
+    // A connection whose authority is not this machine's loopback is a remote
+    // caller asking to connect. The Host states that fact as its own event,
+    // so a consumer never infers "remote" from unrelated local activity.
+    this.publishRemoteRequest(request, admission.peer)
     let released: Promise<void> | undefined
     return {
       peer: record.peer,
@@ -159,6 +165,22 @@ export class HostConnectionService extends Service implements HostConnectionHand
         return released
       },
     }
+  }
+
+  /**
+   * Announce one admitted remote connection request.
+   * @param request - the admitted request's headers.
+   * @param peer - the Peer the admission produced.
+   */
+  private publishRemoteRequest(request: ConnectionTrustRequest, peer: PeerScope): void {
+    const authority = requestAuthority(request)
+    if (authority === undefined || isLoopbackHostname(authority)) return
+    const facts: RemoteConnectionRequest = {
+      authority,
+      peerId: peer.id,
+      interactions: peer.interactions,
+    }
+    this.owner.emit('connection/remote-requested', facts)
   }
 
   private isTrusted(request: ConnectionTrustRequest): boolean {
