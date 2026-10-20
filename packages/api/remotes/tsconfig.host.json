@@ -17,6 +17,7 @@
     {
       "path": "../gateway/tsconfig.host.json"
     },
+    { "path": "../../client/connection/tsconfig.host.json" },
     {
       "path": "../../core/session"
     },

@@ -43,6 +43,8 @@ export { RpcId, transportError } from './rpc.ts'
 export { Peer } from './peer.ts'
 export type { PeerOptions } from './peer.ts'
 export { CONNECT_PATH, type ConnectionInteractions } from './connect-protocol.ts'
+// Loads the `connection/remote-requested` event declaration into this face.
+import './remote-connection-request.ts'
 export type { RemoteConnectionRequest } from './remote-connection-request.ts'
 export {
   clientRequestSchema,
@@ -70,17 +72,6 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'connection/request'(request: IncomingMessage, response: ServerResponse, next: () => Promise<void>): Promise<void>
-    /**
-     * A caller outside this machine asked to connect and was admitted.
-     *
-     * This is the remote-connection request itself, not a proxy for it: a new
-     * local Session, a new subagent, or any other local activity never emits
-     * it. The authority names the host the request came from; the Peer is the
-     * one the admission produced.
-     * @param request - Admitted connection facts.
-     * @mode emit
-     */
-    'connection/remote-requested'(request: RemoteConnectionRequest): void
   }
 }
 

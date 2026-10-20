@@ -9,7 +9,7 @@
 import type {} from '@deepseek-ai/dsh-api-session-controller/remote-events'
 // Pulls the `connection/remote-requested` Cordis declaration into this face,
 // so the forwarded-event allowlist can carry it.
-import type {} from '@deepseek-ai/dsh-client-connection'
+import type {} from '@deepseek-ai/dsh-client-connection/src/remote-connection-request.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-deepseek-account/types'
 import type {} from '@deepseek-ai/dsh-permission-presets/types'
