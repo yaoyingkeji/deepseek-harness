@@ -21,7 +21,7 @@ export interface DesktopSettings {
 export type DesktopCloseBehavior = 'hide' | 'quit'
 
 /** Notification categories that can be toggled from the General settings. */
-export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote'
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session'
 
 /** Resolved notification category switches, all enabled by default. */
 export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean>
@@ -30,7 +30,7 @@ export type DesktopNotificationSettings = Record<DesktopNotificationCategory, bo
  * Categories that can flood the user with notices and are therefore off by
  * default; the General settings marks them with a recommendation warning.
  */
-export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote']
+export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session']
 
 /** Every notification category with its default-enabled state. */
 export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {
@@ -40,6 +40,7 @@ export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {
   subagent: false,
   credential: false,
   remote: false,
+  session: false,
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -89,7 +90,7 @@ export function readDesktopSettings(userData: string): DesktopSettings {
       throw new Error('notifications must be an object')
     }
     const notifications: DesktopNotificationSettings = { ...DESKTOP_NOTIFICATION_DEFAULTS }
-    for (const category of ['approval', 'question', 'job', 'subagent', 'credential', 'remote'] as const) {
+    for (const category of ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session'] as const) {
       const enabled = value.notifications?.[category]
       if (enabled !== undefined && typeof enabled !== 'boolean') {
         throw new Error(`notifications.${category} must be true or false`)

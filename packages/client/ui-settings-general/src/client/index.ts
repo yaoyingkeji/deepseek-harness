@@ -119,8 +119,23 @@ export function apply(ctx: ClientContext): void {
     titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string,
   ): void => {
     const zh = (document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: DesktopNotificationCategory; title: string; body: string; sessionId?: string }) => Promise<void> } })
-      .dshDesktop?.notify?.({ category, title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn, ...(sessionId === undefined ? {} : { sessionId }) })
+    const carrier = globalThis as typeof globalThis & {
+      dshDesktop?: {
+        protocolVersion: number
+        notify?: (input: {
+          category: DesktopNotificationCategory
+          title: string
+          body: string
+          sessionId?: string
+        }) => Promise<void>
+      }
+    }
+    void carrier.dshDesktop?.notify?.({
+      category,
+      title: zh ? titleZh : titleEn,
+      body: zh ? bodyZh : bodyEn,
+      ...(sessionId === undefined ? {} : { sessionId }),
+    })
   }
   ctx.remote.$on('subagent/finished', (info) => {
     const value = info as { provider?: string; id?: string }
@@ -143,6 +158,15 @@ export function apply(ctx: ClientContext): void {
     notifyDesktop('remote', '远程接入请求', authority + ' 请求接入本机，请确认是否允许',
       'Remote access request', authority + ' asked to connect to this machine - please confirm',
       undefined)
+  })
+  // The session category is its own switch, driven by the real new-session
+  // event. Subagent sessions are filtered out: they are spawned by the model
+  // itself and the subagent category already reports them.
+  ctx.remote.$on('api-session/added', (summary) => {
+    const value = summary as { sessionId?: string; origin?: 'subagent' }
+    if (value.origin === 'subagent' || value.sessionId === undefined) return
+    notifyDesktop('session', '新会话', '已创建新的会话',
+      'New session', 'A new session has been created', value.sessionId)
   })
 
   // Notification clicks surface the owning session or the relevant settings

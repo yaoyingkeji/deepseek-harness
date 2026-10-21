@@ -17,7 +17,7 @@ export interface DesktopNotificationsRowInjected {
 
 /** Notification categories rendered as individual switches. */
 const CATEGORIES: readonly DesktopNotificationCategory[] = [
-  'approval', 'question', 'job', 'subagent', 'credential', 'remote',
+  'approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session',
 ]
 
 /**
@@ -29,7 +29,7 @@ const CATEGORIES: readonly DesktopNotificationCategory[] = [
 export function DesktopNotificationsRow({ bridge, t }:
   PropsRuntime<'settings.general.item'> & PropsLocale<'settings'> & InjectFace<DesktopNotificationsRowInjected>) {
   const [settings, setSettings] = useState<DesktopNotificationSettings>({
-    approval: true, question: true, job: true, subagent: false, credential: false, remote: false,
+    approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
   })
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -82,7 +82,7 @@ export function DesktopNotificationsRow({ bridge, t }:
       </div>
       {failed && <div role="alert">{t('notifications.error')}</div>}
     </div>
-    {CATEGORIES.map((category) => (
+    {CATEGORIES.map(category => (
       <div className={css.row} key={category}>
         <div className={css.labels}>
           <div className={css.labelRow}>

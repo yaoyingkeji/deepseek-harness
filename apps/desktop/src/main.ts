@@ -678,7 +678,6 @@ async function main(): Promise<void> {
     // A confirmation on a hidden window would go unseen, so it waits for the next show; the mandatory
     // flow keeps its own taskbar and Dock attention instead.
     if (!isMandatory()) await windowShown()
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- A quit can begin while the show is awaited.
     if (quitting) return state
     return updates.install(version)
   }
@@ -840,7 +839,7 @@ async function main(): Promise<void> {
     if (typeof input !== 'object' || input === null
       || typeof (input as { title?: unknown }).title !== 'string'
       || typeof (input as { body?: unknown }).body !== 'string'
-      || !(['approval', 'question', 'job', 'subagent', 'credential', 'remote'] as const)
+      || !(['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session'] as const)
         .includes((input as { category?: unknown }).category as DesktopNotificationCategory)) {
       throw new Error('desktop notify: title, body and category are required')
     }
@@ -877,7 +876,7 @@ async function main(): Promise<void> {
   })
   ipcMain.handle(DESKTOP_IPC.notificationsSet, (event, category: unknown, enabled: unknown) => {
     assertProductSender(event)
-    const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote'] as const
+    const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session'] as const
     if (!categories.includes(category as typeof categories[number])) {
       throw new Error('desktop notifications: unknown category')
     }
