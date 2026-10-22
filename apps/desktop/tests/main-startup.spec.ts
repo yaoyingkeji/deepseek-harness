@@ -128,11 +128,11 @@ const harness = await vi.hoisted(async () => {
     setBounds() {}
     setTitle = vi.fn()
     destroy() { this.destroyed = true; this.emit('closed') }
-    close() {
+    readonly close = vi.fn(() => {
       const event = { preventDefault: vi.fn() }
       this.emit('close', event)
       if (event.preventDefault.mock.calls.length === 0) this.destroy()
-    }
+    })
   }
   class FakeHost {
     readonly updateTasks = vi.fn(async (_action: 'inspect' | 'lock' | 'unlock') => false)

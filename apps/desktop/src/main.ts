@@ -849,7 +849,9 @@ async function main(): Promise<void> {
       throw new Error('desktop notify: sessionId must be a string')
     }
     if (!desktopSettings.notifications[category]) return
-    if (mainWindow?.isFocused()) return
+    // Notifications are shown regardless of window focus so every category is
+    // verifiable from an active session; the per-category switches already
+    // decide which notices appear at all.
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
       : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))

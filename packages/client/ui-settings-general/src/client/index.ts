@@ -191,7 +191,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => () => { stopNotifyAction?.() }, 'ui-settings-general: notification action carrier')
   // The close-button behavior lives in the Electron shell settings; Web builds hide the row.
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
-    name: 'settings.general.item', id: 'close-behavior', order: 10, locale: NS,
+    name: 'settings.general.item', id: 'close-behavior', order: 110, locale: NS,
     inject: (): CloseWindowBehaviorRowInjected => ({
       ...(carrier?.protocolVersion === 1 && carrier.closeBehavior !== undefined
         ? { bridge: carrier.closeBehavior } : {}),
@@ -199,7 +199,7 @@ export function apply(ctx: ClientContext): void {
   }, CloseWindowBehaviorRow))
   // Desktop notification category switches; Web builds hide the row.
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
-    name: 'settings.general.item', id: 'desktop-notifications', order: 12, locale: NS,
+    name: 'settings.general.item', id: 'desktop-notifications', order: 120, locale: NS,
     inject: (): DesktopNotificationsRowInjected => ({
       ...(carrier?.protocolVersion === 1 && carrier.notifications !== undefined
         ? { bridge: carrier.notifications } : {}),
