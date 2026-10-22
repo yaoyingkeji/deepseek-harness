@@ -4,8 +4,11 @@ import { DESKTOP_IPC } from '../src/ipc.ts'
 import { syncWindowsAppearance } from '../src/preload-windows.ts'
 
 const send = vi.hoisted(() => vi.fn())
-vi.mock('electron', () => ({ ipcRenderer: { send } }))
+vi.mock('electron', () => ({ ipcRenderer: { send, on: vi.fn(), invoke: vi.fn(async () => {}) } }))
 vi.mock('../src/preload-menu.ts', () => ({ installWindowsMenu: () => ({ update: vi.fn(), dispose: vi.fn() }) }))
+// Linux caption window controls are installed by preload-windows for the
+// hidden titlebar; the real implementation is covered by its own renderer.
+vi.mock('../src/preload-linux-window-controls.ts', () => ({ installLinuxWindowControls: () => ({ update: vi.fn(), dispose: vi.fn() }) }))
 
 afterEach(() => {
   window.dispatchEvent(new Event('pagehide'))
@@ -17,10 +20,19 @@ afterEach(() => {
   send.mockClear()
 })
 
-it.each(['darwin', 'linux'] as const)('does not install Windows controls on %s', (platform) => {
-  vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
+it('does not install Windows controls on darwin', () => {
+  vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
   syncWindowsAppearance()
   expect(document.documentElement.hasAttribute('data-windows-titlebar')).toBe(false)
+  expect(send).not.toHaveBeenCalled()
+})
+
+it('marks the caption and installs the Linux window controls on linux', () => {
+  vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+  syncWindowsAppearance()
+  expect(document.documentElement.hasAttribute('data-windows-titlebar')).toBe(true)
+  expect(document.documentElement.style.getPropertyValue('--dsh-windows-titlebar-height')).toBe('40px')
+  // Linux caption chrome must not send the Windows overlay palette relay.
   expect(send).not.toHaveBeenCalled()
 })
 

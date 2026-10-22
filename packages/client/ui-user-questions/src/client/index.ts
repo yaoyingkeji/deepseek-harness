@@ -42,9 +42,23 @@ import { en, zh, type QuestionKey } from './locales.ts'
  * @param bodyEn - English notification body.
  */
 function desktopNotify(category: 'approval' | 'question' | 'job', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
-  const zh = (document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-  void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'approval' | 'question' | 'job'; title: string; body: string; sessionId?: string }) => Promise<void> } })
-    .dshDesktop?.notify?.({ category, title: zh ? titleZh : titleEn, body: zh ? bodyZh : bodyEn, ...(sessionId === undefined ? {} : { sessionId }) })
+  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
+  // a missing bridge, or a failing IPC must never break the core feature flow.
+  try {
+    const root = typeof document === 'undefined' ? undefined : document.documentElement
+    const zh = root === undefined
+      ? false
+      : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'approval' | 'question' | 'job'; title: string; body: string; sessionId?: string }) => Promise<void> } })
+      .dshDesktop?.notify?.({
+        category,
+        title: zh ? titleZh : titleEn,
+        body: zh ? bodyZh : bodyEn,
+        ...(sessionId === undefined ? {} : { sessionId }),
+      })
+  } catch {
+    // ignore: notification delivery must never throw into the caller path
+  }
 }
 
 export type {

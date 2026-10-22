@@ -1113,10 +1113,6 @@ async function main(): Promise<void> {
     try {
       tray = new DesktopTray({ iconPath: trayIconPath, locale: currentDesktopLocale,
         open: () => { focusPrimaryWindow() }, quit: () => { app.quit() } })
-      // Startup reminder when the close button keeps the app resident in the tray.
-      if (desktopSettings.window.closeBehavior === 'hide') {
-        showTrayNotice(locale.messages.trayDwellNotice)
-      }
     } catch (error) { console.warn('desktop tray: unavailable', error) }
   }
   const backgroundNotice = process.platform === 'win32'
