@@ -24,9 +24,11 @@ it('creates a discoverable default file on first launch without touching other p
   writeFileSync(join(userData, 'keybindings.json'), 'existing shortcuts\n')
   expect(readDesktopSettings(userData)).toEqual({
     updates: { allowTestAuthPopupWindow: false }, window: { closeBehavior: 'hide' },
-    notifications: { approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false },
+    notifications: {
+      approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false, focused: false,
+    },
   })
-  expect(readFileSync(path, 'utf8')).toBe('{\n  "updates": {\n    "allowTestAuthPopupWindow": false\n  },\n  "window": {\n    "closeBehavior": "hide"\n  },\n  "notifications": {\n    "approval": true,\n    "question": true,\n    "job": true,\n    "subagent": false,\n    "credential": false,\n    "remote": false,\n    "session": false\n  }\n}\n')
+  expect(readFileSync(path, 'utf8')).toBe('{\n  "updates": {\n    "allowTestAuthPopupWindow": false\n  },\n  "window": {\n    "closeBehavior": "hide"\n  },\n  "notifications": {\n    "approval": true,\n    "question": true,\n    "job": true,\n    "subagent": false,\n    "credential": false,\n    "remote": false,\n    "session": false,\n    "focused": false\n  }\n}\n')
   expect(readFileSync(join(userData, 'keybindings.json'), 'utf8')).toBe('existing shortcuts\n')
 })
 
@@ -50,9 +52,18 @@ it('loads notification category switches with defaults for absent categories', (
   writeFileSync(path, '{"notifications":{"job":false}}')
   const settings = readDesktopSettings(userData)
   expect(settings.notifications).toEqual({
-    approval: true, question: true, job: false, subagent: false, credential: false, remote: false, session: false,
+    approval: true, question: true, job: false, subagent: false, credential: false, remote: false, session: false, focused: false,
   })
   expect(readFileSync(path, 'utf8')).toBe('{"notifications":{"job":false}}')
+})
+
+it('loads the focus-mode switch with false as its default and accepts an explicit true', () => {
+  const { userData, path } = fixture()
+  writeFileSync(path, '{"notifications":{}}')
+  expect(readDesktopSettings(userData).notifications.focused).toBe(false)
+  writeFileSync(path, '{"notifications":{"focused":true}}')
+  expect(readDesktopSettings(userData).notifications.focused).toBe(true)
+  expect(readFileSync(path, 'utf8')).toBe('{"notifications":{"focused":true}}')
 })
 
 it('persists settings with writeDesktopSettings', () => {

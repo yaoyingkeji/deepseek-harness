@@ -109,7 +109,9 @@ vi.mock('../src/paths.ts', () => ({ resolveDesktopPaths: () => ({ profile: '/pro
 vi.mock('../src/settings.ts', () => ({ readDesktopSettings: () => ({
   updates: { allowTestAuthPopupWindow: false },
   window: { closeBehavior: 'hide' as const },
-  notifications: { approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false },
+  notifications: {
+    approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false, focused: false,
+  },
 }) }))
 vi.mock('../src/login-shell-environment.ts', async importOriginal => ({
   ...await importOriginal<typeof import('../src/login-shell-environment.ts')>(),

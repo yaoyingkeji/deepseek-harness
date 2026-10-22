@@ -20,16 +20,21 @@ const CATEGORIES: readonly DesktopNotificationCategory[] = [
   'approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session',
 ]
 
+/** Focus-mode switch key: whether notifications also appear while focused. */
+const FOCUSED_KEY = 'focused' as const
+
 /**
  * Render the desktop notification category switches with a quick all-on/all-off
- * control; categories that are off by default carry a flood warning.
+ * control; categories that are off by default carry a flood warning. The
+ * focus-mode switch decides whether notifications also appear while the window
+ * has focus (default off = only while unfocused).
  * @param props - accepted preferences, writer and localized copy.
  * @returns the General Settings row, or nothing when the Desktop carrier is absent.
  */
 export function DesktopNotificationsRow({ bridge, t }:
   PropsRuntime<'settings.general.item'> & PropsLocale<'settings'> & InjectFace<DesktopNotificationsRowInjected>) {
   const [settings, setSettings] = useState<DesktopNotificationSettings>({
-    approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
+    approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false, focused: false,
   })
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -44,7 +49,7 @@ export function DesktopNotificationsRow({ bridge, t }:
     return () => { live = false }
   }, [bridge])
   if (bridge === undefined) return null
-  const setEnabled = (category: DesktopNotificationCategory, enabled: boolean): void => {
+  const setEnabled = (category: DesktopNotificationCategory | typeof FOCUSED_KEY, enabled: boolean): void => {
     touched.current = true
     setFailed(false)
     setBusy(true)
@@ -81,6 +86,17 @@ export function DesktopNotificationsRow({ bridge, t }:
         </button>
       </div>
       {failed && <div role="alert">{t('notifications.error')}</div>}
+    </div>
+    <div className={css.row} key={FOCUSED_KEY}>
+      <div className={css.labels}>
+        <div className={css.labelRow}>
+          <div className={css.label}>{t('notifications.focused')}</div>
+          <span className={css.help} title={t('notifications.focusedHint')}>?</span>
+        </div>
+        <div className={css.warning}>{t('notifications.focusedWarning')}</div>
+      </div>
+      <Switch checked={settings[FOCUSED_KEY]} disabled={busy} label={t('notifications.focused')}
+        onChange={(next) => { setEnabled(FOCUSED_KEY, next) }} />
     </div>
     {CATEGORIES.map(category => (
       <div className={css.row} key={category}>

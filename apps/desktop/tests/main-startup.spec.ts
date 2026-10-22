@@ -221,6 +221,7 @@ const harness = await vi.hoisted(async () => {
     get publishUpdate() { return publishUpdate! },
     set publishUpdate(value: (state: DesktopUpdateState) => DesktopUpdateState) { publishUpdate = value },
     dialog: { showOpenDialog: vi.fn(), showErrorBox: vi.fn(), showMessageBox: vi.fn() },
+    notificationShows: [] as string[],
     openExternal: vi.fn(async () => {}),
     protocolHandle: vi.fn<(scheme: string, handler: (request: Request) => Response | Promise<Response>) => void>(),
     applyRelease: vi.fn(() => { preparing.resolve(); return prepared.promise }),
@@ -304,7 +305,7 @@ vi.mock('electron', () => ({
   nativeImage: { createFromPath: (path: string) => ({ path }) },
   Notification: class {
     constructor(public readonly options: { title: string; body: string }) {}
-    readonly show = vi.fn()
+    readonly show = vi.fn(() => { harness.notificationShows.push(this.options.title) })
     readonly on = vi.fn(() => this)
   },
 }))
@@ -915,6 +916,31 @@ describe('desktop main startup', () => {
     expect(window.unmaximize).toHaveBeenCalledOnce()
     close(owned)
     expect(window.close).toHaveBeenCalledOnce()
+  })
+
+  it('filters notifications while focused unless the focus-mode switch is on', async () => {
+    harness.notificationShows.length = 0
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    const window = harness.windows[0]!
+    const owned = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
+    const notify = harness.handlers.get(DESKTOP_IPC.notify)!
+    const setNotifications = harness.handlers.get(DESKTOP_IPC.notificationsSet)!
+    const input = { category: 'approval' as const, title: 'Title', body: 'Body' }
+    // Focus mode defaults off; the mock window is focused, so the notification is suppressed.
+    expect(window.isFocused()).toBe(true)
+    notify(owned, input)
+    expect(harness.notificationShows).toHaveLength(0)
+    // Once the window loses focus, the same request reaches the native notification.
+    vi.spyOn(window, 'isFocused').mockReturnValue(false)
+    notify(owned, input)
+    expect(harness.notificationShows).toEqual(['Title'])
+    // Turning the focus-mode switch on restores focused notifications.
+    setNotifications(owned, 'focused', true)
+    vi.spyOn(window, 'isFocused').mockReturnValue(true)
+    notify(owned, input)
+    expect(harness.notificationShows).toEqual(['Title', 'Title'])
   })
 
   it('covers the macOS vibrancy reattach gap with an opaque base while minimized or hidden', async () => {

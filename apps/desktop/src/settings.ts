@@ -23,8 +23,14 @@ export type DesktopCloseBehavior = 'hide' | 'quit'
 /** Notification categories that can be toggled from the General settings. */
 export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session'
 
-/** Resolved notification category switches, all enabled by default. */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean>
+/**
+ * Resolved notification category switches plus the focus-mode preference.
+ * Category keys are all enabled by default except the recommended-off set;
+ * `focused` decides whether notifications also appear while the window has
+ * focus (false = only when the window is unfocused, the non-disturbing
+ * default; true = always, convenient for verifying every category).
+ */
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean }
 
 /**
  * Categories that can flood the user with notices and are therefore off by
@@ -41,6 +47,7 @@ export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {
   credential: false,
   remote: false,
   session: false,
+  focused: false,
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -97,6 +104,11 @@ export function readDesktopSettings(userData: string): DesktopSettings {
       }
       notifications[category] = enabled ?? DESKTOP_NOTIFICATION_DEFAULTS[category]
     }
+    const focused = value.notifications?.focused
+    if (focused !== undefined && typeof focused !== 'boolean') {
+      throw new Error('notifications.focused must be true or false')
+    }
+    notifications.focused = focused ?? DESKTOP_NOTIFICATION_DEFAULTS.focused
     return {
       updates: { allowTestAuthPopupWindow: allow ?? false },
       window: { closeBehavior: closeBehavior ?? 'hide' },

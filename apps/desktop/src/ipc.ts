@@ -86,8 +86,13 @@ export type DesktopCloseBehavior = 'hide' | 'quit'
 /** Desktop notification categories configurable from the General settings. */
 export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session'
 
-/** Resolved notification category switches. */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean>
+/**
+ * Resolved notification category switches plus the focus-mode preference.
+ * Category keys select which event kinds notify; `focused` decides whether
+ * notifications also appear while the window has focus (false = only while
+ * unfocused; true = always).
+ */
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean }
 
 /** Localized notification payload sent by the web client. */
 export interface DesktopNotifyInput {
