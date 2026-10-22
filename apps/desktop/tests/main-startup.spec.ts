@@ -302,6 +302,11 @@ vi.mock('electron', () => ({
   powerMonitor: harness.powerMonitor,
   Tray: harness.FakeTray,
   nativeImage: { createFromPath: (path: string) => ({ path }) },
+  Notification: class {
+    constructor(public readonly options: { title: string; body: string }) {}
+    readonly show = vi.fn()
+    readonly on = vi.fn(() => this)
+  },
 }))
 vi.mock('../src/background-notice.ts', () => ({ DesktopBackgroundNotice: class {
   constructor(options: { markerPath: string }) { harness.backgroundNotice.markerPath = options.markerPath }

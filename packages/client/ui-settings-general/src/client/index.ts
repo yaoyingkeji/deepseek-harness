@@ -118,24 +118,33 @@ export function apply(ctx: ClientContext): void {
     category: DesktopNotificationCategory,
     titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string,
   ): void => {
-    const zh = (document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-    const carrier = globalThis as typeof globalThis & {
-      dshDesktop?: {
-        protocolVersion: number
-        notify?: (input: {
-          category: DesktopNotificationCategory
-          title: string
-          body: string
-          sessionId?: string
-        }) => Promise<void>
+    // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
+    // a missing bridge, or a failing IPC must never break the core flow.
+    try {
+      const root = typeof document === 'undefined' ? undefined : document.documentElement
+      const zh = root === undefined
+        ? false
+        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+      const carrier = globalThis as typeof globalThis & {
+        dshDesktop?: {
+          protocolVersion: number
+          notify?: (input: {
+            category: DesktopNotificationCategory
+            title: string
+            body: string
+            sessionId?: string
+          }) => Promise<void>
+        }
       }
+      void carrier.dshDesktop?.notify?.({
+        category,
+        title: zh ? titleZh : titleEn,
+        body: zh ? bodyZh : bodyEn,
+        ...(sessionId === undefined ? {} : { sessionId }),
+      })
+    } catch {
+      // ignore: notification delivery must never throw into the caller path
     }
-    void carrier.dshDesktop?.notify?.({
-      category,
-      title: zh ? titleZh : titleEn,
-      body: zh ? bodyZh : bodyEn,
-      ...(sessionId === undefined ? {} : { sessionId }),
-    })
   }
   ctx.remote.$on('subagent/finished', (info) => {
     const value = info as { provider?: string; id?: string }
