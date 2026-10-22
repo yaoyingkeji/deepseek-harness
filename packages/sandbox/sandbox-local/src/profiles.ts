@@ -4,6 +4,7 @@
  * @module @deepseek-ai/dsh-sandbox-local/profiles
  */
 
+import { dirname } from 'node:path'
 import { grantArgs as landlockGrantArgs } from '@deepseek-ai/node-addon-system/landlock-run'
 import { writableRoots } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
@@ -15,9 +16,25 @@ import type { SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
  */
 export function bwrapProfileArgs(policy: SandboxPolicy): string[] {
   const args = ['--ro-bind', '/', '/', '--dev', '/dev', '--unshare-pid', '--proc', '/proc', '--die-with-parent']
+  // AppImage 把可执行文件放在 FUSE 挂载点上（/tmp/.mount_*）。该挂载点
+  // 不会随根绑定可靠地传播进 bwrap 的新 mount namespace，而 workspace-write
+  // 模式还会用 --tmpfs /tmp 把它从沙箱里整个抹掉，导致沙箱内 exec 宿主
+  // 可执行文件失败（sandbox-unavailable: bwrap: execvp ...: No such file
+  // or directory）。因此显式只读绑定可执行文件所在的挂载点：
+  // - read-only 模式：在根绑定之后补挂，确保沙箱内可访问宿主可执行文件；
+  // - workspace-write 模式：必须在 --tmpfs /tmp 之后重新挂载（tmpfs 会先
+  //   卸载其下的子挂载）。
+  const execDir = dirname(process.execPath)
+  const appImageMount = execDir !== '/' && /(^|[\\/])\.mount_[^\\/]+$/u.test(execDir) ? execDir : undefined
+  if (appImageMount !== undefined && policy.mode !== 'workspace-write') {
+    args.push('--ro-bind', appImageMount, appImageMount)
+  }
   if (policy.mode === 'workspace-write') {
     args.push('--tmpfs', '/tmp')
     args.push('--bind', policy.workspaceRoot, policy.workspaceRoot)
+    if (appImageMount !== undefined) {
+      args.push('--ro-bind', appImageMount, appImageMount)
+    }
   }
   return args
 }

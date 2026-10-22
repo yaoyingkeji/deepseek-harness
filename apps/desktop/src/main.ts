@@ -849,9 +849,13 @@ async function main(): Promise<void> {
       throw new Error('desktop notify: sessionId must be a string')
     }
     if (!desktopSettings.notifications[category]) return
-    // Notifications are shown regardless of window focus so every category is
-    // verifiable from an active session; the per-category switches already
-    // decide which notices appear at all.
+    // Focus mode: when "focused" is off (the default), the window being
+    // focused means the in-app panel already surfaces the event, so the
+    // native notification waits until the window loses focus. Turning the
+    // switch on shows notifications regardless of focus (convenient for
+    // verifying every category).
+    if (!desktopSettings.notifications.focused
+      && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()) return
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
       : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
@@ -878,12 +882,12 @@ async function main(): Promise<void> {
   })
   ipcMain.handle(DESKTOP_IPC.notificationsSet, (event, category: unknown, enabled: unknown) => {
     assertProductSender(event)
-    const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session'] as const
+    const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'focused'] as const
     if (!categories.includes(category as typeof categories[number])) {
       throw new Error('desktop notifications: unknown category')
     }
     if (typeof enabled !== 'boolean') throw new Error('desktop notifications: enabled must be true or false')
-    const typedCategory = category as DesktopNotificationCategory
+    const typedCategory = category as DesktopNotificationCategory | 'focused'
     desktopSettings = {
       ...desktopSettings,
       notifications: { ...desktopSettings.notifications, [typedCategory]: enabled },
