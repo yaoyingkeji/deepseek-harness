@@ -13,7 +13,7 @@ import type {} from '@deepseek-ai/dsh-api-job-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
-import { en, NS, zh, type JobKey } from './locales.ts'
+import { en, ja, es, fr, de, ru, pt, NS, zh, type JobKey } from './locales.ts'
 
 /**
  * Fire a native desktop notification through the Electron shell bridge when
@@ -61,7 +61,7 @@ export const inject = ['jobs', 'slots', 'locale']
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-jobs: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-jobs: dictionaries')
   // Desktop notifications when background jobs settle while the window is
   // not focused; the job list already covers focused use.
   const settled: Record<string, JobStatus> = {}
