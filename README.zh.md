@@ -8,44 +8,40 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 文档：[https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
 
-## 分支说明：`linux-custom-titlebar`
+## 仓库说明
 
-> **适配 Deepin v25 系统并测试通过，其它系统需自行测试**
+> 本仓库是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Linux 适配分支集，提供三个互补分支：
 
-本仓库默认分支 **`linux-custom-titlebar`** 基于官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 针对 Linux 桌面端进行了优化修改，主要改动如下：
+| 分支 | 用途 | 构建产物 |
+|------|------|----------|
+| **[`linux-custom-titlebar`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-custom-titlebar)**（默认） | 定制优化版：自定义标题栏、系统托盘、桌面通知、自动更新 | `v*-linux-x64-custom` |
+| **[`linux-package-official`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-package-official)** | 官方上游版：仅引入 Linux 打包基建，功能与上游一致 | `v*-linux-x64-official` |
+| **[`master`](https://github.com/yaoyingkeji/deepseek-harness/tree/master)** | 纯上游镜像，不含任何 Linux 分支改动 | — |
 
-### 1. 自定义标题栏，节约屏幕高度
+### `linux-custom-titlebar` — 定制优化版
 
-官方桌面版在 Linux 下使用系统标题栏，「应用 / 编辑」菜单会**单独占据一行屏幕空间**；本分支为 Linux 启用自定义标题栏（`titleBarStyle: hidden`），将「应用 / 编辑」菜单与窗口控制按钮内嵌进标题栏，与 Windows 版体验一致，节约了一整行屏幕高度。
+基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 针对 Linux 桌面端优化：
 
-### 2. 去除原生菜单栏，移除多余的「Toggle Developer Tools」调试项
+1. **自定义标题栏**：将「应用 / 编辑」菜单内嵌进标题栏，与 Windows 版体验一致，节约屏幕高度
+2. **去除原生菜单栏**：抑制 GTK 菜单栏泄漏的调试项，界面更干净
+3. **系统托盘 + 关闭行为可配置**：关闭后驻留托盘；通用设置可选「隐藏到托盘」或「退出应用」
+4. **桌面通知**：后台任务、审核请求、模型提问等场景弹出原生通知，通知分类可精细开关
+5. **自动更新**：指向 `linux-latest` Release，AppImage 支持自动下载安装
 
-Linux 下原生 GTK 菜单栏会把隐藏的调试菜单项（Toggle Developer Tools）泄漏显示到窗口顶部菜单；本分支在 Linux 下完全抑制原生菜单栏（`Menu.setApplicationMenu(null)`），同时保留应用内绘制的官方「应用 / 编辑」菜单（关于、退出等），界面更干净整洁。
+#### 下载安装
 
-### 3. 系统托盘 + 关闭行为可配置
+前往 [Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases)，查找 `v*-linux-x64-custom` 标签：
 
-窗口关闭后应用驻留后台，Linux 托盘图标提供「显示窗口 / 退出」入口，与其他平台体验对齐；同时可在 **通用设置 → 关闭窗口时** 选择点击 X 后的行为：**隐藏到托盘（默认）**或**退出应用**，托盘菜单文案随系统语言切换（中文/English）。
+```bash
+# AppImage
+chmod +x deepseek-harness-*-linux-x64.AppImage
+./deepseek-harness-*-linux-x64.AppImage
 
-### 4. 桌面通知（分支增强）
+# deb
+sudo dpkg -i deepseek-harness_*_amd64.deb
+```
 
-窗口在后台运行或失焦时，以下场景弹出原生桌面通知：模型需要审核权限、模型需要向您提问、后台任务完成/失败；聚焦使用时不打扰（由应用内面板提示）。
-
-- **通知时机可配置**：通用设置「桌面通知」顶部提供「聚焦时也显示通知」开关（默认关闭）——关闭时仅在窗口失去焦点后弹出通知（聚焦时不打扰）；开启后聚焦与失焦都弹出，便于逐一验证各类通知。
-- **通知分类细化开关**：需要审核权限 / 模型向您提问 / 任务完成失败（默认开启）、子代理结束 / 凭证需要 / 远程接入·新会话（默认关闭，附「不建议开启，避免通知轰炸」提醒）；每项旁有「?」悬停说明功能与触发场景；标题右侧提供「全部开启」快捷按钮一键全开，一键全关。
-- **点击直达 + 自动切换会话**：点击通知会聚焦窗口并自动切换到通知所属会话，定位到对应审批/问题面板；模型向您提问的通知已覆盖实时与恢复两条路径，计划评审（plan-review）一并提醒；凭证需要（模型需登录）已接通事件触发（默认关闭）。
-- **沙箱兼容**：修复 AppImage 模式下「工作区内修改」沙箱不可用的问题（bwrap 的 `--tmpfs /tmp` 会抹掉 AppImage 的 FUSE 挂载点，现已显式重新绑定，工作区写模式沙箱正常）。
-
-### 5. 启用自动更新（检查更新）
-
-Linux 版启用「检查更新」：更新源指向本仓库稳定的 `linux-latest` Release（每次构建自动刷新为最新版本），AppImage 支持自动下载安装，检查到新版本时展示更新说明。
-
-### 下载安装
-
-- 前往 [Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases) 下载 `deepseek-harness-*-linux-x86_64.AppImage` 或 `deepseek-harness-*-linux-amd64.deb`。
-- AppImage：`chmod +x deepseek-harness-*.AppImage && ./deepseek-harness-*.AppImage`
-- deb：`sudo dpkg -i deepseek-harness-*.deb`（也可直接双击安装）
-
-### 界面截图
+#### 界面截图
 
 | 欢迎界面 | 主界面（自定义标题栏） |
 | :---: | :---: |
@@ -54,6 +50,14 @@ Linux 版启用「检查更新」：更新源指向本仓库稳定的 `linux-lat
 | 「应用」菜单 | 菜单展开效果 |
 | :---: | :---: |
 | ![应用菜单](docs/screenshots/linux-custom-titlebar/screenshot-03-app-menu.png) | ![菜单展开效果](docs/screenshots/linux-custom-titlebar/screenshot-04-menu-open.png) |
+
+### `linux-package-official` — 官方上游版
+
+与上游 `master` 功能完全一致，**仅额外注入 Linux 打包基础设施**（`linux-x64` 构建目标、`electron-builder` 配置、`package-linux.sh` 脚本），不做任何 UI 或功能性修改。适合需要官方原版体验的用户。
+
+### `master` — 纯上游镜像
+
+持续同步 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 `master` 分支，不做任何额外改动。用于版本对比和上游追踪。
 
 ## 开发者预览
 
