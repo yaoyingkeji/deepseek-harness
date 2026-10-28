@@ -1011,7 +1011,7 @@ async function main(): Promise<void> {
       let progress: Promise<unknown> | undefined
       try {
         let state = updates.state
-        if (manual || state.phase === 'idle' || (state.phase === 'error' && state.failedOperation === 'check')) {
+        if (manual || state.phase === 'idle' || state.phase === 'no_release' || state.phase === 'upstream_available' || (state.phase === 'error' && state.failedOperation === 'check')) {
           controller = new AbortController()
           ordinaryDialogs.add(controller)
           const parent = currentDialogWindow()
@@ -1028,6 +1028,16 @@ async function main(): Promise<void> {
           await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
             message: locale.messages.updateCurrent,
             detail: formatDesktopMessage(locale.messages.updateCurrentDetail, { version: app.getVersion() }) })
+          return
+        }
+        if (state.phase === 'no_release') {
+          await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
+            message: locale.messages.updateNoRelease })
+          return
+        }
+        if (state.phase === 'upstream_available') {
+          await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
+            message: formatDesktopMessage(locale.messages.updateUpstreamAvailable, { version: state.version ?? '', current: app.getVersion() }) })
           return
         }
         if (state.phase === 'ready' || (state.phase === 'error' && state.failedOperation === 'install')) {

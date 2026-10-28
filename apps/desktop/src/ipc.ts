@@ -52,7 +52,7 @@ export const DESKTOP_IPC = {
 export type DesktopUpdatePreparationFailureKind = 'stop-failed' | 'tasks-changed' | 'tasks-unavailable' | 'fullscreen-timeout'
 
 export interface DesktopUpdateState {
-  readonly phase: 'idle' | 'checking' | 'available' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
+  readonly phase: 'idle' | 'checking' | 'available' | 'upstream_available' | 'no_release' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
   readonly version?: string
   /** Markdown release notes carried by the update feed, shown in the update prompt. */
   readonly notes?: string
@@ -77,6 +77,8 @@ export type DesktopUpdateFailureKind =
   | 'tasks-changed'
   | 'tasks-unavailable'
   | 'fullscreen-timeout'
+  | 'no-release'
+  | 'upstream-available'
 
 /** Semantic status content; actions open main-process confirmation dialogs only. */
 export interface DesktopUpdatePresentation {

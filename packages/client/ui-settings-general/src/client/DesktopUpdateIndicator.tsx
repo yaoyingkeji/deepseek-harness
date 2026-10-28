@@ -16,6 +16,8 @@ function updateCopy(state: DesktopUpdatePresentation, t: SettingsTranslate): { l
     idle: '',
     checking: t('desktop.update.checking'),
     available: t('desktop.update.available'),
+    upstream_available: t('desktop.update.upstreamAvailable'),
+    no_release: t('desktop.update.noRelease'),
     downloading: t('desktop.update.progress', { percent: state.percent ?? 0 }),
     verifying: t('desktop.update.verifying'),
     installing: t('desktop.update.installing'),
@@ -38,6 +40,8 @@ function updateCopy(state: DesktopUpdatePresentation, t: SettingsTranslate): { l
       'tasks-changed': t('desktop.update.tasksChanged'),
       'tasks-unavailable': t('desktop.update.tasksUnavailable'),
       'fullscreen-timeout': t('desktop.update.fullscreenTimeout'),
+      'no-release': t('desktop.update.noRelease'),
+      'upstream-available': t('desktop.update.upstreamAvailable'),
     }
     return { label, detail: failures[state.failure ?? 'install'] }
   }
