@@ -97,6 +97,7 @@ export async function uploadDesktopTarget(args: string[]): Promise<void> {
   if (values.environment !== undefined && values.environment !== 'test' && values.environment !== 'production') {
     throw new DesktopUploadUsageError('desktop upload: credential launcher environment must be test or production')
   }
+  if (target === 'linux-x64') throw new DesktopUploadUsageError('desktop upload: Linux packages are not upload-retained; publish directly from the workflow')
   const environment = launcher
     ? resolveCredentialUploadEnvironment(fileEnvironment, process.env, values.environment as 'test' | 'production', values.bucket!, name)
     : fileEnvironment
