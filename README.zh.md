@@ -14,24 +14,62 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 | 分支 | 用途 | 构建产物 |
 |------|------|----------|
-| **[`linux-custom-titlebar`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-custom-titlebar)** | 定制优化版：自定义标题栏、系统托盘、桌面通知、自动更新 | `v*-linux-x64-custom` |
-| **[`linux-package-official`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-package-official)**（当前分支） | 官方上游版：仅引入 Linux 打包基建，功能与上游一致 | `v*-linux-x64-official` |
+| **[`linux-custom-titlebar`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-custom-titlebar)**（默认） | 定制优化版：自定义标题栏、系统托盘、桌面通知、自动更新 | `v*-linux-x64-custom` |
+| **[`linux-package-official`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-package-official)** | 官方上游版：仅引入 Linux 打包基建，功能与上游一致 | `v*-linux-x64-official` |
 | **[`master`](https://github.com/yaoyingkeji/deepseek-harness/tree/master)** | 纯上游镜像，不含任何 Linux 分支改动 | — |
 
-### `linux-package-official` — 官方上游版（当前分支）
+### 检查更新
 
-与 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 `master` 分支功能**完全一致**，仅额外注入 Linux 打包基础设施：
+| 项目 | 状态 |
+|------|------|
+| **上游最新版本** | `0.2.2-alpha.2`（`dsh-v0.2.2-alpha.2`） |
+| **上游同步** | ✅ 已同步，0 commits behind |
+| **定制版 Linux 发行包** | ⏳ 构建中（`v0.2.2-alpha.2-linux-x64-custom`），线上为 `v0.2.1-rc.2-linux-x64` |
+| **官方版 Linux 发行包** | ⏳ 构建中（`v0.2.2-alpha.2-linux-x64-official`），暂无线上发行包 |
+| **自动更新源** | ✅ `linux-latest` → `v0.2.1-rc.2` |
 
-- 注册 `linux-x64` 构建目标
-- 配置 `electron-builder` 的 Linux AppImage + deb 构建
-- 包含 `package-linux.sh` 打包脚本
-- 提供 GitHub Actions 云端构建工作流（`.github/workflows/linux-package-release.yml`）
+> 发布状态每行左侧为最新源码版本（`apps/desktop/package.json`），右侧为线上已发布的 Release。定制版和官方版的 `0.2.2-alpha.2` 正在 GitHub Actions 云端构建中。更新同步历史请查看 [Actions 面板](https://github.com/yaoyingkeji/deepseek-harness/actions/workflows/384236203)。
 
-不做任何 UI 或功能性修改，适合需要官方原版体验的用户。
+### `linux-custom-titlebar` — 定制优化版
+
+基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 针对 Linux 桌面端优化：
+
+1. **自定义标题栏**：将「应用 / 编辑」菜单内嵌进标题栏，与 Windows 版体验一致，节约屏幕高度
+2. **去除原生菜单栏**：抑制 GTK 菜单栏泄漏的调试项，界面更干净
+3. **系统托盘 + 关闭行为可配置**：关闭后驻留托盘；通用设置可选「隐藏到托盘」或「退出应用」
+4. **桌面通知**：后台任务、审核请求、模型提问等场景弹出原生通知，通知分类可精细开关
+5. **自动更新**：指向 `linux-latest` Release，AppImage 支持自动下载安装
 
 #### 下载安装
 
-前往 [Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases)，查找 `v*-linux-x64-official` 标签。
+前往 [Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases)，查找 `v*-linux-x64-custom` 标签：
+
+```bash
+# AppImage
+chmod +x deepseek-harness-*-linux-x64.AppImage
+./deepseek-harness-*-linux-x64.AppImage
+
+# deb
+sudo dpkg -i deepseek-harness_*_amd64.deb
+```
+
+#### 界面截图
+
+| 欢迎界面 | 主界面（自定义标题栏） |
+| :---: | :---: |
+| ![欢迎界面](docs/screenshots/linux-custom-titlebar/screenshot-01-welcome.png) | ![主界面](docs/screenshots/linux-custom-titlebar/screenshot-02-main-window.png) |
+
+| 「应用」菜单 | 菜单展开效果 |
+| :---: | :---: |
+| ![应用菜单](docs/screenshots/linux-custom-titlebar/screenshot-03-app-menu.png) | ![菜单展开效果](docs/screenshots/linux-custom-titlebar/screenshot-04-menu-open.png) |
+
+### `linux-package-official` — 官方上游版
+
+与上游 `master` 功能完全一致，**仅额外注入 Linux 打包基础设施**（`linux-x64` 构建目标、`electron-builder` 配置、`package-linux.sh` 脚本），不做任何 UI 或功能性修改。适合需要官方原版体验的用户。
+
+### `master` — 纯上游镜像
+
+持续同步 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 `master` 分支，不做任何额外改动。用于版本对比和上游追踪。
 
 ## 开发者预览
 
