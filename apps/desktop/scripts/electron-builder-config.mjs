@@ -21,6 +21,32 @@ import {
   scrubWindowsSigningEnvironment,
 } from './windows-sign.mjs'
 import { resolveDesktopAutoUpdateConfig } from './desktop-auto-update-environment.mjs'
+
+/** Environment variable overriding the Linux auto-update feed base URL. */
+export const DESKTOP_LINUX_UPDATE_ENV = 'DSH_DESKTOP_LINUX_UPDATE_URL'
+
+/** Chinese branch release notes embedded in the Linux update feed metadata. */
+export const LINUX_UPDATE_RELEASE_NOTES = `linux-package-official 分支更新
+
+官方上游构建版，仅注入 Linux 打包基建，功能与 deepseek-ai/deepseek-harness 一致。`
+
+/**
+ * Resolve the Linux auto-update feed: the owner's stable GitHub release directory.
+ * A fixed tag (not a versioned one) is used so every installed build always sees the
+ * newest metadata; the workflow refreshes that release on each build.
+ * @param {NodeJS.ProcessEnv} env - Packaging environment.
+ * @param {string} version - Desktop semantic version (kept for diagnostics).
+ * @returns {{ channel: 'nightly', publicUrl: string }} Linux updater feed.
+ */
+export function resolveDesktopLinuxUpdateConfig(env, version) {
+  const url = env[DESKTOP_LINUX_UPDATE_ENV]?.trim()
+  return {
+    channel: 'nightly',
+    publicUrl: url === undefined || url === ''
+      ? 'https://github.com/yaoyingkeji/deepseek-harness/releases/download/linux-latest-official/'
+      : url,
+  }
+}
 import { resolveDesktopBuildCommit } from './desktop-build-commit.mjs'
 import { resolveDesktopBuildVersion } from './desktop-build-version.mjs'
 import { resolveDesktopPolicyEnvironment } from './desktop-policy-environment.mjs'
@@ -96,7 +122,9 @@ export function createElectronBuilderConfig(
   if (windowsSigner !== undefined) {
     installWindowsNsisBootstrapSigner({ sign: windowsSigner })
   }
-  const update = unsigned ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
+  const update = unsigned ? undefined : resolvedPlatform === 'linux'
+    ? resolveDesktopLinuxUpdateConfig(env, productVersion)
+    : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
   if (preparedRuntime !== undefined) buildPaths.dsh = preparedRuntime
   // electron-builder merges extraMetadata into the packaged manifest, so a build version here reaches
   // the artifact names, the update feed, and the installed app.getVersion() the updater compares against.
