@@ -8,6 +8,31 @@ It is built on an **everything-is-a-plugin** architecture and powered by [Cordis
 
 Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
 
+## 仓库说明 / Repository Overview
+
+> 本仓库是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Linux 适配分支集，提供三个互补分支：
+
+| 分支 | 用途 | 构建产物 |
+|------|------|----------|
+| **[`linux-custom-titlebar`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-custom-titlebar)** | 定制优化版：自定义标题栏、系统托盘、桌面通知、自动更新 | `v*-linux-x64-custom` |
+| **[`linux-package-official`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-package-official)**（当前分支） | 官方上游版：仅引入 Linux 打包基建，功能与上游一致 | `v*-linux-x64-official` |
+| **[`master`](https://github.com/yaoyingkeji/deepseek-harness/tree/master)** | 纯上游镜像，不含任何 Linux 分支改动 | — |
+
+### `linux-package-official` — 官方上游版（当前分支）
+
+与 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 `master` 分支功能**完全一致**，仅额外注入 Linux 打包基础设施：
+
+- 注册 `linux-x64` 构建目标
+- 配置 `electron-builder` 的 Linux AppImage + deb 构建
+- 包含 `package-linux.sh` 打包脚本
+- 提供 GitHub Actions 云端构建工作流（`.github/workflows/linux-package-release.yml`）
+
+不做任何 UI 或功能性修改，适合需要官方原版体验的用户。
+
+#### 下载安装
+
+前往 [Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases)，查找 `v*-linux-x64-official` 标签。
+
 ## Developer preview
 
 DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
