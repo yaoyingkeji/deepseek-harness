@@ -253,8 +253,12 @@ export function createElectronBuilderConfig(
       target: ['nsis'],
     },
     linux: {
+      icon: fileURLToPath(new URL('../resources/icon.png', import.meta.url)),
       category: 'Development',
-      target: ['AppImage'],
+      maintainer: 'DeepSeek AI',
+      synopsis: 'Desktop shell for a bundled dsh runtime and external plugins',
+      executableName: 'deepseek-harness',
+      target: ['AppImage', 'deb'],
     },
     nsis: {
       uninstallDisplayName: '${productName}',
