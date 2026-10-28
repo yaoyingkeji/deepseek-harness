@@ -52,10 +52,14 @@ jobs:
             echo "slug=custom" >> "$GITHUB_OUTPUT"
             echo "name_suffix=定制优化版" >> "$GITHUB_OUTPUT"
             echo "name_suffix_en=Custom Edition" >> "$GITHUB_OUTPUT"
+            echo "branch_desc_cn=本分支为 DeepSeek Harness 的 Deepin v25 桌面端优化修改版，适配并测试通过，其他 Linux 系统需自行测试。" >> "$GITHUB_OUTPUT"
+            echo "branch_desc_en=This branch is an optimized fork of DeepSeek Harness for the Deepin v25 desktop, tested and verified. Other Linux distributions require self-testing." >> "$GITHUB_OUTPUT"
           else
             echo "slug=official" >> "$GITHUB_OUTPUT"
             echo "name_suffix=官方上游版" >> "$GITHUB_OUTPUT"
             echo "name_suffix_en=Official Upstream Edition" >> "$GITHUB_OUTPUT"
+            echo "branch_desc_cn=本分支为 DeepSeek Harness 官方上游构建版，仅引入 Linux 打包基础设施，功能与上游完全一致。" >> "$GITHUB_OUTPUT"
+            echo "branch_desc_en=This branch is the official upstream build of DeepSeek Harness, with only Linux packaging infrastructure added. Functionality is identical to upstream." >> "$GITHUB_OUTPUT"
           fi
 
       - name: 配置缓存目录
@@ -131,12 +135,14 @@ jobs:
           SLUG="${{ steps.branch.outputs.slug }}"
           SUFFIX_CN="${{ steps.branch.outputs.name_suffix }}"
           SUFFIX_EN="${{ steps.branch.outputs.name_suffix_en }}"
+          BRANCH_DESC_CN="${{ steps.branch.outputs.branch_desc_cn }}"
+          BRANCH_DESC_EN="${{ steps.branch.outputs.branch_desc_en }}"
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           TAG="v${VERSION}-linux-x64-${SLUG}"
           BRANCH="${{ github.event.inputs.branch }}"
 
           NOTES=$(cat <<EOF
-          ## :cn: 中文
+          ## 中文
 
           本 Release 由 GitHub Actions 在 **ubuntu-24.04** 云端自动构建，源码来自 \`${BRANCH}\` 分支。
 
@@ -157,15 +163,19 @@ jobs:
           sudo dpkg -i deepseek-harness_${VERSION}_amd64.deb
           \`\`\`
 
-          ### 版本信息
+          ### 构建信息
 
           - 版本号：${VERSION}
           - 分支：\`${BRANCH}\`（${SUFFIX_CN}）
           - 构建环境：GitHub Actions · ubuntu-24.04
 
+          ### 分支说明
+
+          ${BRANCH_DESC_CN}
+
           ---
 
-          ## :us: English
+          ## English
 
           This release is built automatically by GitHub Actions on a **ubuntu-24.04** runner from the \`${BRANCH}\` branch.
 
@@ -191,6 +201,10 @@ jobs:
           - Version: ${VERSION}
           - Branch: \`${BRANCH}\` (${SUFFIX_EN})
           - Runner: GitHub Actions · ubuntu-24.04
+
+          ### Branch Description
+
+          ${BRANCH_DESC_EN}
 
           ---
 
@@ -221,7 +235,7 @@ jobs:
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           LATEST_TAG="linux-latest"
           LATEST_NOTES=$(cat <<EOF
-          ## :cn: 中文
+          ## 中文
 
           此 Release 是 DeepSeek Harness Linux x64 **定制优化版**的自动更新源。每次云端构建成功后会刷新至此版本，供应用内「检查更新」使用。
 
@@ -239,7 +253,7 @@ jobs:
 
           ---
 
-          ## :us: English
+          ## English
 
           This release is the **auto-update feed** for DeepSeek Harness Linux x64 Custom Edition. It is refreshed with every successful cloud build and consumed by the in-app update checker.
 
@@ -283,7 +297,7 @@ jobs:
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           LATEST_TAG="linux-latest-official"
           LATEST_NOTES=$(cat <<EOF
-          ## :cn: 中文
+          ## 中文
 
           此 Release 是 DeepSeek Harness Linux x64 **官方构建版**的自动更新源。每次云端构建成功后会刷新至此版本，供应用内「检查更新」使用。
 
@@ -301,7 +315,7 @@ jobs:
 
           ---
 
-          ## :us: English
+          ## English
 
           This release is the **auto-update feed** for DeepSeek Harness Linux x64 Official Edition. It is refreshed with every successful cloud build and consumed by the in-app update checker.
 
