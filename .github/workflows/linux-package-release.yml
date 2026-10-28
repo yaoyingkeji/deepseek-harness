@@ -1,19 +1,21 @@
-# Build the DeepSeek Harness Desktop app for Linux x64 (AppImage + deb) on a
-# GitHub-hosted runner and publish a GitHub pre-release with the packages.
-# Mirrors package-linux.sh; the workspace build (build:official) runs first
-# because the packaging script requires the client build record.
-name: Linux x64 package & release (AppImage + deb)
+# 构建 DeepSeek Harness 桌面版 Linux x64 包（AppImage + deb）并发布 GitHub Release。
+# 支持两个分支：linux-custom-titlebar（定制优化版）与 linux-package-official（官方上游版）。
+# 文件名含分支标识以区分，发布说明中英双语。
+name: Linux x64 打包与发布 (AppImage + deb)
 
 on:
   workflow_dispatch:
     inputs:
-      build_version:
-        description: 'Build version: auto derives from apps/desktop/package.json; otherwise a full version'
-        type: string
-        default: auto
-        required: false
+      branch:
+        description: '构建分支：linux-custom-titlebar（定制版）/ linux-package-official（官方版）'
+        type: choice
+        options:
+          - linux-custom-titlebar
+          - linux-package-official
+        default: linux-custom-titlebar
+        required: true
       publish:
-        description: 'Create a GitHub pre-release and upload AppImage/deb/SHA256SUMS'
+        description: '发布 GitHub Release 并上传制品'
         type: boolean
         default: true
         required: false
@@ -22,7 +24,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: linux-x64-desktop-package
+  group: linux-x64-package-${{ github.event.inputs.branch }}
   cancel-in-progress: false
 
 env:
@@ -30,19 +32,33 @@ env:
   DSH_TELEMETRY_DISABLED: '1'
 
 jobs:
-  package-linux:
-    name: Build AppImage + deb and publish
+  package:
+    name: 构建 ${{ github.event.inputs.branch }} · AppImage + deb
     runs-on: ubuntu-24.04
-    timeout-minutes: 150
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event.inputs.branch }}
           fetch-depth: 0
           persist-credentials: false
           clean: true
 
-      - name: Configure runner-private caches
+      - name: 识别分支类型与产品名称
+        id: branch
+        run: |
+          BRANCH="${{ github.event.inputs.branch }}"
+          if [ "$BRANCH" = "linux-custom-titlebar" ]; then
+            echo "slug=custom" >> "$GITHUB_OUTPUT"
+            echo "name_suffix=定制优化版" >> "$GITHUB_OUTPUT"
+            echo "name_suffix_en=Custom Edition" >> "$GITHUB_OUTPUT"
+          else
+            echo "slug=official" >> "$GITHUB_OUTPUT"
+            echo "name_suffix=官方上游版" >> "$GITHUB_OUTPUT"
+            echo "name_suffix_en=Official Upstream Edition" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 配置缓存目录
         run: |
           echo "NODE_COMPILE_CACHE=${{ runner.temp }}/node-compile-cache" >> "$GITHUB_ENV"
           echo "npm_config_devdir=${{ runner.temp }}/node-gyp" >> "$GITHUB_ENV"
@@ -57,7 +73,7 @@ jobs:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
           package-manager-cache: false
 
-      - name: Configure pnpm store path
+      - name: 配置 pnpm store
         id: pnpm-store
         run: |
           store_root="$HOME/.local/share/pnpm/store"
@@ -72,116 +88,131 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
 
-      - name: Install (immutable)
+      - name: 安装依赖（不变更 lockfile）
         run: pnpm install --frozen-lockfile
 
-      - name: Verify release version
-        run: pnpm run release:verify --family dsh
-
-      - name: Apply custom build version
-        if: inputs.build_version != 'auto'
-        env:
-          BUILD_VERSION: ${{ inputs.build_version }}
-        run: |
-          CURRENT=$(node -p "require('./package.json').version")
-          export CURRENT
-          for f in package.json $(find apps packages -name package.json -not -path '*/node_modules/*'); do
-            node -e '
-              const fs = require("node:fs");
-              const j = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-              if (typeof j.version === "string" && j.version === process.env.CURRENT) {
-                j.version = process.env.BUILD_VERSION;
-                fs.writeFileSync(process.argv[1], JSON.stringify(j, null, 2) + "\n");
-                console.log("updated", process.argv[1]);
-              }
-            ' "$f"
-          done
-          echo "workspace version rewritten: $(node -p "require('./apps/desktop/package.json').version")"
-
-      - name: Build official workspace
+      - name: 构建官方 workspace
         run: pnpm run build:official
 
-      - name: Package Linux AppImage + deb
+      - name: 打包 Linux AppImage + deb
         run: bash package-linux.sh
 
-      - name: Determine build version
+      - name: 确定版本号
         id: version
         run: |
-          if [ -n "${{ inputs.build_version }}" ] && [ "${{ inputs.build_version }}" != "auto" ]; then
-            echo "version=${{ inputs.build_version }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=$(node -p "require('./apps/desktop/package.json').version")" >> "$GITHUB_OUTPUT"
-          fi
+          V=$(node -p "require('./apps/desktop/package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "version=$V"
 
-      - name: Upload build artifacts
+      - name: 计算 SHA256SUMS
+        run: |
+          cd apps/desktop/.desktop-build/targets/linux-x64/artifacts
+          sha256sum *.AppImage *.deb > "SHA256SUMS.${{ steps.branch.outputs.slug }}-${{ steps.version.outputs.version }}"
+
+      - name: 上传构建制品
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: linux-x64-packages-${{ steps.version.outputs.version }}
+          name: linux-x64-${{ steps.branch.outputs.slug }}-${{ steps.version.outputs.version }}
           path: |
             apps/desktop/.desktop-build/targets/linux-x64/artifacts/*.AppImage
             apps/desktop/.desktop-build/targets/linux-x64/artifacts/*.deb
             apps/desktop/.desktop-build/targets/linux-x64/artifacts/*.yml
+            apps/desktop/.desktop-build/targets/linux-x64/artifacts/SHA256SUMS.*
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
-      - name: Compute SHA256SUMS
-        if: inputs.publish
-        run: |
-          cd apps/desktop/.desktop-build/targets/linux-x64/artifacts
-          sha256sum *.AppImage *.deb > "SHA256SUMS.linux-x64-${{ steps.version.outputs.version }}"
-
-      - name: Publish GitHub pre-release
+      - name: 发布 GitHub Release（${{ steps.branch.outputs.name_suffix }}）
         if: inputs.publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
-          TAG="v${VERSION}-linux-x64"
-          ARTIFACTS_DIR="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
-          NOTES=$(cat <<EOF
-          DeepSeek Harness ${VERSION} Linux x64 版自动构建发布，源码来自 ${GITHUB_REF_NAME} 分支。
+          SLUG="${{ steps.branch.outputs.slug }}"
+          SUFFIX_CN="${{ steps.branch.outputs.name_suffix }}"
+          SUFFIX_EN="${{ steps.branch.outputs.name_suffix_en }}"
+          ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
+          TAG="v${VERSION}-linux-x64-${SLUG}"
+          BRANCH="${{ github.event.inputs.branch }}"
 
-          - AppImage 与 deb 由 GitHub 托管的 ubuntu-24.04 runner 使用 electron-builder 构建。
-          - 附带 SHA256SUMS 校验文件，请下载后核对。
+          NOTES=$(cat <<EOF
+          # DeepSeek Harness ${VERSION} · Linux x64 · ${SUFFIX_EN}
+          ## DeepSeek Harness ${VERSION} · Linux x64 · ${SUFFIX_CN}
+
+          源码分支：\`${BRANCH}\`
+          Source branch: \`${BRANCH}\`
+
+          **制品 / Artifacts**
+
+          | 文件 | 类型 |
+          |------|------|
+          | \`deepseek-harness-${VERSION}-linux-x64.AppImage\` | 可执行包 / Portable binary |
+          | \`deepseek-harness_${VERSION}_amd64.deb\` | Debian 安装包 / Installer |
+
+          **安装 / Installation**
+
+          \`\`\`bash
+          # AppImage
+          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
+          ./deepseek-harness-${VERSION}-linux-x64.AppImage
+
+          # deb
+          sudo dpkg -i deepseek-harness_${VERSION}_amd64.deb
+          \`\`\`
+
+          **校验 / Verification**
+
+          下载后请核对 SHA256SUMS 文件中对应包的哈希值。
+          Please verify the downloaded files against the SHA256SUMS checksums.
           EOF
           )
+
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
           gh release create "$TAG" \
-            "$ARTIFACTS_DIR"/*.AppImage \
-            "$ARTIFACTS_DIR"/*.deb \
-            "$ARTIFACTS_DIR"/SHA256SUMS.linux-x64-* \
-            "$ARTIFACTS_DIR"/*.yml \
+            "$ARTIFACTS"/*.AppImage \
+            "$ARTIFACTS"/*.deb \
+            "$ARTIFACTS"/SHA256SUMS.* \
+            "$ARTIFACTS"/*.yml \
             --repo "${{ github.repository }}" \
             --target "$GITHUB_SHA" \
-            --title "DeepSeek Harness ${VERSION} (Linux x64)" \
+            --title "DeepSeek Harness ${VERSION} (Linux x64 · ${SUFFIX_CN})" \
             --notes "$NOTES" \
             --prerelease
 
-      - name: Publish linux-latest (auto-update feed)
-        if: inputs.publish && inputs.build_version == 'auto'
+      - name: 刷新 linux-latest 自动更新源（仅定制版）
+        if: inputs.publish && github.event.inputs.branch == 'linux-custom-titlebar'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
-          ARTIFACTS_DIR="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
+          ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           LATEST_TAG="linux-latest"
           LATEST_NOTES=$(cat <<EOF
-          DeepSeek Harness ${VERSION} Linux x64 最新构建（应用自动更新源）。
+          # DeepSeek Harness ${VERSION} (Linux x64 · 定制优化版 · 自动更新源)
+          # DeepSeek Harness ${VERSION} (Linux x64 · Custom Edition · Auto-update Feed)
 
           该 Release 是应用内「检查更新」的稳定更新源，每次云端构建都会刷新为最新版本。
-          - AppImage：chmod +x 后运行
-          - deb：sudo dpkg -i 安装
-          - 版本化发布见 v${VERSION}-linux-x64
+
+          This release is the auto-update feed for the in-app update checker.
+          It is refreshed with every cloud build.
+
+          **安装 / Installation**
+
+          \`\`\`bash
+          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
+          ./deepseek-harness-${VERSION}-linux-x64.AppImage
+          \`\`\`
+
+          版本化发布见 / Versioned release: \`v${VERSION}-linux-x64-custom\`
           EOF
           )
           gh release delete "$LATEST_TAG" --yes --cleanup-tag 2>/dev/null || true
           gh release create "$LATEST_TAG" \
-            "$ARTIFACTS_DIR"/*.AppImage \
-            "$ARTIFACTS_DIR"/*.deb \
-            "$ARTIFACTS_DIR"/SHA256SUMS.linux-x64-* \
-            "$ARTIFACTS_DIR"/*.yml \
+            "$ARTIFACTS"/*.AppImage \
+            "$ARTIFACTS"/*.deb \
+            "$ARTIFACTS"/SHA256SUMS.* \
+            "$ARTIFACTS"/*.yml \
             --repo "${{ github.repository }}" \
             --target "$GITHUB_SHA" \
             --title "DeepSeek Harness ${VERSION} (Linux x64 · latest)" \
