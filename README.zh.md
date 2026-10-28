@@ -10,7 +10,7 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 ## 仓库说明
 
-> 本仓库是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Linux 适配分支集，提供三个互补分支：
+> 本仓库是 DeepSeek Harness 的 Deepin v25 桌面端优化修改版，适配并测试通过，其他 Linux 系统需自行测试。
 
 | 分支 | 用途 | 构建产物 |
 |------|------|----------|
