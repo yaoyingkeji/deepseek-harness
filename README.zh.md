@@ -18,6 +18,18 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 | **[`linux-package-official`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-package-official)** | 官方上游版：仅引入 Linux 打包基建，功能与上游一致 | `v*-linux-x64-official` |
 | **[`master`](https://github.com/yaoyingkeji/deepseek-harness/tree/master)** | 纯上游镜像，不含任何 Linux 分支改动 | — |
 
+### 检查更新
+
+| 项目 | 状态 |
+|------|------|
+| **上游最新版本** | `0.2.2-alpha.2`（`dsh-v0.2.2-alpha.2`） |
+| **上游同步** | ✅ 已同步，0 commits behind |
+| **定制版 Linux 发行包** | ⏳ 构建中（`v0.2.2-alpha.2-linux-x64-custom`），线上为 `v0.2.1-rc.2-linux-x64` |
+| **官方版 Linux 发行包** | ⏳ 构建中（`v0.2.2-alpha.2-linux-x64-official`），暂无线上发行包 |
+| **自动更新源** | ✅ `linux-latest` → `v0.2.1-rc.2` |
+
+> 发布状态每行左侧为最新源码版本（`apps/desktop/package.json`），右侧为线上已发布的 Release。定制版和官方版的 `0.2.2-alpha.2` 正在 GitHub Actions 云端构建中。更新同步历史请查看 [Actions 面板](https://github.com/yaoyingkeji/deepseek-harness/actions/workflows/384236203)。
+
 ### `linux-custom-titlebar` — 定制优化版
 
 基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 针对 Linux 桌面端优化：
