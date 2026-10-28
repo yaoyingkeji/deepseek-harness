@@ -272,3 +272,64 @@ jobs:
             --title "DeepSeek Harness ${VERSION} (Linux x64 · latest)" \
             --notes "$LATEST_NOTES" \
             --prerelease
+
+      - name: 刷新 linux-latest-official 自动更新源（官方构建版）
+        if: inputs.publish && github.event.inputs.branch == 'linux-package-official'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
+          LATEST_TAG="linux-latest-official"
+          LATEST_NOTES=$(cat <<EOF
+          ## :cn: 中文
+
+          此 Release 是 DeepSeek Harness Linux x64 **官方构建版**的自动更新源。每次云端构建成功后会刷新至此版本，供应用内「检查更新」使用。
+
+          - 版本：${VERSION}
+          - 构建环境：GitHub Actions · ubuntu-24.04
+
+          ### 安装
+
+          \`\`\`bash
+          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
+          ./deepseek-harness-${VERSION}-linux-x64.AppImage
+          \`\`\`
+
+          按版本发布的独立构建见：\`v${VERSION}-linux-x64-official\`
+
+          ---
+
+          ## :us: English
+
+          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Official Edition. It is refreshed with every successful cloud build and consumed by the in-app update checker.
+
+          - Version: ${VERSION}
+          - Runner: GitHub Actions · ubuntu-24.04
+
+          ### Installation
+
+          \`\`\`bash
+          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
+          ./deepseek-harness-${VERSION}-linux-x64.AppImage
+          \`\`\`
+
+          Versioned builds: \`v${VERSION}-linux-x64-official\`
+
+          ---
+
+          源码 / Source: https://github.com/yaoyingkeji/deepseek-harness
+          EOF
+          )
+          gh release delete "$LATEST_TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$LATEST_TAG" \
+            "$ARTIFACTS"/*.AppImage \
+            "$ARTIFACTS"/*.deb \
+            "$ARTIFACTS"/SHA256SUMS.* \
+            "$ARTIFACTS"/*.yml \
+            --repo "${{ github.repository }}" \
+            --target "$GITHUB_SHA" \
+            --title "DeepSeek Harness ${VERSION} (Linux x64 · latest-official)" \
+            --notes "$LATEST_NOTES" \
+            --prerelease
