@@ -136,20 +136,17 @@ jobs:
           BRANCH="${{ github.event.inputs.branch }}"
 
           NOTES=$(cat <<EOF
-          # DeepSeek Harness ${VERSION} · Linux x64 · ${SUFFIX_EN}
-          ## DeepSeek Harness ${VERSION} · Linux x64 · ${SUFFIX_CN}
+          ## :cn: 中文
 
-          源码分支：\`${BRANCH}\`
-          Source branch: \`${BRANCH}\`
+          本 Release 由 GitHub Actions 在 **ubuntu-24.04** 云端自动构建，源码来自 \`${BRANCH}\` 分支。
 
-          **制品 / Artifacts**
+          | 制品 | 类型 | 说明 |
+          |------|------|------|
+          | \`deepseek-harness-${VERSION}-linux-x64.AppImage\` | AppImage | 免安装，添加执行权限即可运行 |
+          | \`deepseek-harness_${VERSION}_amd64.deb\` | deb | Debian / Ubuntu 系统安装包 |
+          | \`SHA256SUMS.${SLUG}-${VERSION}\` | 校验文件 | 下载后请核对哈希值，确保文件完整 |
 
-          | 文件 | 类型 |
-          |------|------|
-          | \`deepseek-harness-${VERSION}-linux-x64.AppImage\` | 可执行包 / Portable binary |
-          | \`deepseek-harness_${VERSION}_amd64.deb\` | Debian 安装包 / Installer |
-
-          **安装 / Installation**
+          ### 安装
 
           \`\`\`bash
           # AppImage
@@ -160,10 +157,45 @@ jobs:
           sudo dpkg -i deepseek-harness_${VERSION}_amd64.deb
           \`\`\`
 
-          **校验 / Verification**
+          ### 版本信息
 
-          下载后请核对 SHA256SUMS 文件中对应包的哈希值。
-          Please verify the downloaded files against the SHA256SUMS checksums.
+          - 版本号：${VERSION}
+          - 分支：\`${BRANCH}\`（${SUFFIX_CN}）
+          - 构建环境：GitHub Actions · ubuntu-24.04
+
+          ---
+
+          ## :us: English
+
+          This release is built automatically by GitHub Actions on a **ubuntu-24.04** runner from the \`${BRANCH}\` branch.
+
+          | Artifact | Type | Description |
+          |----------|------|-------------|
+          | \`deepseek-harness-${VERSION}-linux-x64.AppImage\` | AppImage | Portable — make executable and run |
+          | \`deepseek-harness_${VERSION}_amd64.deb\` | deb | Debian / Ubuntu system package |
+          | \`SHA256SUMS.${SLUG}-${VERSION}\` | Checksums | Verify file integrity after download |
+
+          ### Installation
+
+          \`\`\`bash
+          # AppImage
+          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
+          ./deepseek-harness-${VERSION}-linux-x64.AppImage
+
+          # deb
+          sudo dpkg -i deepseek-harness_${VERSION}_amd64.deb
+          \`\`\`
+
+          ### Build Info
+
+          - Version: ${VERSION}
+          - Branch: \`${BRANCH}\` (${SUFFIX_EN})
+          - Runner: GitHub Actions · ubuntu-24.04
+
+          ---
+
+          源码 / Source: https://github.com/deepseek-ai/deepseek-harness
+          Fork: https://github.com/yaoyingkeji/deepseek-harness
           EOF
           )
 
@@ -189,22 +221,44 @@ jobs:
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           LATEST_TAG="linux-latest"
           LATEST_NOTES=$(cat <<EOF
-          # DeepSeek Harness ${VERSION} (Linux x64 · 定制优化版 · 自动更新源)
-          # DeepSeek Harness ${VERSION} (Linux x64 · Custom Edition · Auto-update Feed)
+          ## :cn: 中文
 
-          该 Release 是应用内「检查更新」的稳定更新源，每次云端构建都会刷新为最新版本。
+          此 Release 是 DeepSeek Harness Linux x64 **定制优化版**的自动更新源。每次云端构建成功后会刷新至此版本，供应用内「检查更新」使用。
 
-          This release is the auto-update feed for the in-app update checker.
-          It is refreshed with every cloud build.
+          - 版本：${VERSION}
+          - 构建环境：GitHub Actions · ubuntu-24.04
 
-          **安装 / Installation**
+          ### 安装
 
           \`\`\`bash
           chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
           ./deepseek-harness-${VERSION}-linux-x64.AppImage
           \`\`\`
 
-          版本化发布见 / Versioned release: \`v${VERSION}-linux-x64-custom\`
+          按版本发布的独立构建见：\`v${VERSION}-linux-x64-custom\`
+
+          ---
+
+          ## :us: English
+
+          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Custom Edition. It is refreshed with every successful cloud build and consumed by the in-app update checker.
+
+          - Version: ${VERSION}
+          - Runner: GitHub Actions · ubuntu-24.04
+
+          ### Installation
+
+          \`\`\`bash
+          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
+          ./deepseek-harness-${VERSION}-linux-x64.AppImage
+          \`\`\`
+
+          Versioned builds: \`v${VERSION}-linux-x64-custom\`
+
+          ---
+
+          源码 / Source: https://github.com/deepseek-ai/deepseek-harness
+          Fork: https://github.com/yaoyingkeji/deepseek-harness
           EOF
           )
           gh release delete "$LATEST_TAG" --yes --cleanup-tag 2>/dev/null || true
