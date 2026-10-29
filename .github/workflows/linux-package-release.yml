@@ -4,6 +4,15 @@
 name: Linux x64 打包与发布 (AppImage + deb)
 
 on:
+  # 推送到以下任一分支时自动构建并发布。
+  push:
+    branches:
+      - linux-custom-titlebar
+      - linux-package-official
+    paths-ignore:
+      - 'README.md'
+      - 'README.zh.md'
+      - 'docs/**'
   workflow_dispatch:
     inputs:
       branch:
@@ -24,22 +33,24 @@ permissions:
   contents: write
 
 concurrency:
-  group: linux-x64-package-${{ github.event.inputs.branch }}
+  group: linux-x64-package-${{ github.event.inputs.branch || github.ref_name }}
   cancel-in-progress: false
 
 env:
   PRIMARY_NODE_VERSION: '24'
   DSH_TELEMETRY_DISABLED: '1'
+  # workflow_dispatch 使用输入分支；push 事件使用被推送的分支名。
+  BUILD_BRANCH: ${{ github.event.inputs.branch || github.ref_name }}
 
 jobs:
   package:
-    name: 构建 ${{ github.event.inputs.branch }} · AppImage + deb
+    name: 构建 ${{ github.event.inputs.branch || github.ref_name }} · AppImage + deb
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: ${{ env.BUILD_BRANCH }}
           fetch-depth: 0
           persist-credentials: false
           clean: true
@@ -47,7 +58,7 @@ jobs:
       - name: 识别分支类型与产品名称
         id: branch
         run: |
-          BRANCH="${{ github.event.inputs.branch }}"
+          BRANCH="${BUILD_BRANCH}"
           if [ "$BRANCH" = "linux-custom-titlebar" ]; then
             echo "slug=custom" >> "$GITHUB_OUTPUT"
             echo "name_suffix=定制优化版" >> "$GITHUB_OUTPUT"
@@ -126,7 +137,7 @@ jobs:
           retention-days: 30
 
       - name: 发布 GitHub Release（${{ steps.branch.outputs.name_suffix }}）
-        if: inputs.publish
+        if: github.event_name == 'push' || inputs.publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -139,7 +150,7 @@ jobs:
           BRANCH_DESC_EN="${{ steps.branch.outputs.branch_desc_en }}"
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           TAG="v${VERSION}-linux-x64-${SLUG}"
-          BRANCH="${{ github.event.inputs.branch }}"
+          BRANCH="${{ env.BUILD_BRANCH }}"
 
           NOTES=$(cat <<EOF
           ## 中文
@@ -226,7 +237,7 @@ jobs:
             --prerelease
 
       - name: 刷新 linux-latest 自动更新源（仅定制版）
-        if: inputs.publish && github.event.inputs.branch == 'linux-custom-titlebar'
+        if: (github.event_name == 'push' || inputs.publish) && env.BUILD_BRANCH == 'linux-custom-titlebar'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -288,7 +299,7 @@ jobs:
             --prerelease
 
       - name: 刷新 linux-latest-official 自动更新源（官方构建版）
-        if: inputs.publish && github.event.inputs.branch == 'linux-package-official'
+        if: (github.event_name == 'push' || inputs.publish) && env.BUILD_BRANCH == 'linux-package-official'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -347,3 +358,16 @@ jobs:
             --title "DeepSeek Harness ${VERSION} (Linux x64 · latest-official)" \
             --notes "$LATEST_NOTES" \
             --prerelease
+
+      - name: 同步 README 状态表
+        if: github.event_name == 'push' || inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BRANCH="${BUILD_BRANCH}"
+          VERSION="${{ steps.version.outputs.version }}"
+          # checkout 使用 persist-credentials: false，这里为状态提交单独配置凭据
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          # 交给 Node 脚本处理 README 状态段，避免 sed 处理多语言表格出错
+          node .github/scripts/sync-readme-status.mjs "$BRANCH" "$VERSION" "${{ steps.branch.outputs.slug }}"
