@@ -159,6 +159,7 @@ export interface DshDesktopProductApi {
    * @returns unsubscribe function.
    */
   onNotifyAction(listener: (sessionId: string | undefined) => void): () => void
+}
 
 /** Scheme of Desktop-owned application documents. */
 export const SCHEME = 'dsh-app'

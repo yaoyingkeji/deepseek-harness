@@ -632,11 +632,19 @@ export class GoalService extends TypertRemoteService {
           operation: 'complete',
         })
       } else {
-        this.ctx.emit('goal/completed-or-blocked', {
-          sessionId: agent.session.id,
-          operation: 'block',
-          objective: notification.goal?.objective ?? (change as { goal?: { objective?: string } }).goal?.objective,
-        })
+        const objective = notification.goal?.objective ?? (change as { goal?: { objective?: string } }).goal?.objective
+        if (objective !== undefined) {
+          this.ctx.emit('goal/completed-or-blocked', {
+            sessionId: agent.session.id,
+            operation: 'block',
+            objective,
+          })
+        } else {
+          this.ctx.emit('goal/completed-or-blocked', {
+            sessionId: agent.session.id,
+            operation: 'block',
+          })
+        }
       }
     }
   }
