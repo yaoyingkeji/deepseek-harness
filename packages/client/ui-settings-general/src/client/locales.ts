@@ -434,6 +434,7 @@ export const fr = {
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
+export const de: Record<keyof typeof en, string> = {
   'notifications.plugin': 'Plugin-Vorgänge',
   'notifications.pluginHint': 'Benachrichtigung bei Plugin-Installation oder -Fehler',
   'notifications.schedule': 'Geplante Erinnerungen',
@@ -444,7 +445,6 @@ export const fr = {
   'notifications.nonCurrentSessionHint': 'Eingeschaltet zeigen auch Hintergrund-Sitzungen Benachrichtigungen an',
   'notifications.trayFlash': 'Tray-Symbol blinken',
   'notifications.trayFlashHint': 'Eingeschaltet blinkt das Tray-Symbol bei Benachrichtigungen wie QQ / WeChat',
-export const de = {
   'trigger': 'Einstellungen',
   'shortcut.open': 'Einstellungen öffnen',
   'desktop.update.available': 'Aktualisieren',
