@@ -103,6 +103,13 @@ jobs:
       - name: 构建官方 workspace
         run: pnpm run build:official
 
+      - name: 配置 Linux 更新源与发布说明
+        id: linux-update
+        if: env.BUILD_BRANCH == 'linux-package-official'
+        run: |
+          echo "DSH_DESKTOP_LINUX_UPDATE_URL=https://github.com/yaoyingkeji/deepseek-harness/releases/download/linux-latest-official/" >> "$GITHUB_ENV"
+          echo "DSH_DESKTOP_LINUX_RELEASE_NOTES=linux-package-official 分支构建 / Official upstream build" >> "$GITHUB_ENV"
+
       - name: 打包 Linux AppImage + deb
         run: bash package-linux.sh
 
@@ -149,6 +156,41 @@ jobs:
 
           本 Release 由 GitHub Actions 在 **ubuntu-24.04** 云端自动构建，源码来自 `linux-custom-titlebar` 分支。
 
+          ### 分支说明
+
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 **Deepin v25 桌面端优化修改版**，适配并测试通过，其他 Linux 系统需自行测试。
+
+          > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-custom-titlebar`）
+
+          #### 定制功能
+
+          1. **自定义标题栏** —「应用 / 编辑」菜单内嵌进标题栏，与 Windows 版体验一致，节约屏幕高度
+          2. **去除原生菜单栏** — 抑制 GTK 菜单栏泄漏的调试项，界面更干净
+          3. **系统托盘** — 关闭后驻留托盘，托盘图标可快速「显示窗口 / 退出」；收到通知时托盘图标闪烁（可开关）
+          4. **关闭行为可配置** — 通用设置可选「隐藏到托盘（默认）」或「退出应用」
+          5. **桌面通知** — 以下 10 类场景弹出原生通知，每类可独立开关：
+             - 审核请求（工具授权时提醒）
+             - 模型提问（提问或评审计划时提醒）
+             - 后台任务（完成或失败时提醒）
+             - 子代理结束
+             - 凭证需要（需登录时提醒）
+             - 远程接入（外部连接请求时提醒）
+             - 新会话（含远程接入）
+             - 插件操作（安装完成或失败时提醒）
+             - 定时提醒（调度任务到期时提醒）
+             - Goal 状态（完成或阻塞时提醒）
+             另有「聚焦时不弹出」「非当前会话不弹出」「托盘图标闪烁」三个全局开关
+          6. **自动更新** — 应用内「检查更新」指向 `linux-latest` 自动更新源，AppImage 支持自动下载安装
+
+          #### 自动构建说明
+
+          本分支每次推送代码即自动触发云端构建（README / docs 变更除外），构建成功后同时执行：
+
+          - 发布版本化 Release（本页面）
+          - 刷新 `linux-latest` 自动更新源
+
+          ### 制品
+
           | 制品 | 类型 | 说明 |
           |------|------|------|
           | `deepseek-harness-__VERSION__-linux-x64.AppImage` | AppImage | 免安装，添加执行权限即可运行 |
@@ -173,33 +215,46 @@ jobs:
           - 构建触发：代码推送自动构建并发布
           - 构建环境：GitHub Actions · ubuntu-24.04
 
-          ### 分支说明
-
-          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 **Deepin v25 桌面端优化修改版**，适配并测试通过，其他 Linux 系统需自行测试。
-
-          > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-custom-titlebar`）
-
-          #### 定制功能
-
-          1. **自定义标题栏** —「应用 / 编辑」菜单内嵌进标题栏，与 Windows 版体验一致，节约屏幕高度
-          2. **去除原生菜单栏** — 抑制 GTK 菜单栏泄漏的调试项，界面更干净
-          3. **系统托盘** — 关闭后驻留托盘，托盘图标可快速「显示窗口 / 退出」
-          4. **关闭行为可配置** — 通用设置可选「隐藏到托盘（默认）」或「退出应用」
-          5. **桌面通知** — 后台任务、审核请求、模型提问等场景弹出原生通知，通知分类可精细开关
-          6. **自动更新** — 应用内「检查更新」指向 `linux-latest` 自动更新源，AppImage 支持自动下载安装
-
-          #### 自动构建说明
-
-          本分支每次推送代码即自动触发云端构建（README / docs 变更除外），构建成功后同时执行：
-
-          - 发布版本化 Release（本页面）
-          - 刷新 `linux-latest` 自动更新源
-
           ---
 
           ## English
 
           This release is built automatically by GitHub Actions on a **ubuntu-24.04** runner from the `linux-custom-titlebar` branch.
+
+          ### Branch Description
+
+          An **optimized fork** of [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) for the **Deepin v25 desktop**, tested and verified. Other Linux distributions require self-testing.
+
+          > Repository: [yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness) (branch `linux-custom-titlebar`)
+
+          #### Custom Features
+
+          1. **Custom title bar** — App and Edit menu embedded in the title bar, matching the Windows experience and saving screen real estate
+          2. **No native menu bar** — Suppresses leftover GTK menu bar leak from debug builds for a cleaner look
+          3. **System tray** — App stays in the tray after closing; tray icon offers quick "Show Window / Quit"; icon flashes on notification (toggleable)
+          4. **Configurable close behavior** — General settings toggle: "Hide to tray" (default) or "Quit application"
+          5. **Desktop notifications** — Native notifications for 10 event categories, each independently toggleable:
+             - Approval requests (tool authorization)
+             - Model questions (questions or plan reviews)
+             - Background jobs (finished or failed)
+             - Subagent finished
+             - Credentials needed (sign-in required)
+             - Remote access (external connection requests)
+             - New session (including remote sessions)
+             - Plugin operations (install finished or failed)
+             - Schedule reminders (scheduled task due)
+             - Goal status (completed or blocked)
+             Plus three global toggles: "Show while focused", "Non-current session", and "Tray icon flash"
+          6. **Auto-update** — In-app "Check for Updates" points to the `linux-latest` auto-update feed; AppImage auto-downloads and installs
+
+          #### Automatic Builds
+
+          Every push to this branch (except README / docs) triggers a cloud build, which upon success:
+
+          - Publishes a versioned Release (this page)
+          - Refreshes the `linux-latest` auto-update feed
+
+          ### Artifacts
 
           | Artifact | Type | Description |
           |----------|------|-------------|
@@ -225,28 +280,6 @@ jobs:
           - Trigger: automatic on push
           - Runner: GitHub Actions · ubuntu-24.04
 
-          ### Branch Description
-
-          An **optimized fork** of [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) for the **Deepin v25 desktop**, tested and verified. Other Linux distributions require self-testing.
-
-          > Repository: [yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness) (branch `linux-custom-titlebar`)
-
-          #### Custom Features
-
-          1. **Custom title bar** — App and Edit menu embedded in the title bar, matching the Windows experience and saving screen real estate
-          2. **No native menu bar** — Suppresses leftover GTK menu bar leak from debug builds for a cleaner look
-          3. **System tray** — App stays in the tray after closing; tray icon offers quick "Show Window / Quit"
-          4. **Configurable close behavior** — General settings toggle: "Hide to tray" (default) or "Quit application"
-          5. **Desktop notifications** — Native notifications for background tasks, approval requests, model questions, etc., with per-category toggle switches
-          6. **Auto-update** — In-app "Check for Updates" points to the `linux-latest` auto-update feed; AppImage auto-downloads and installs
-
-          #### Automatic Builds
-
-          Every push to this branch (except README / docs) triggers a cloud build, which upon success:
-
-          - Publishes a versioned Release (this page)
-          - Refreshes the `linux-latest` auto-update feed
-
           ---
 
           源码 / Source: https://github.com/deepseek-ai/deepseek-harness
@@ -259,6 +292,31 @@ jobs:
           ## 中文
 
           本 Release 由 GitHub Actions 在 **ubuntu-24.04** 云端自动构建，源码来自 `linux-package-official` 分支。
+
+          ### 分支说明
+
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游版**，功能与上游 `master` 完全一致。
+
+          > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-package-official`）
+
+          #### 与上游的区别
+
+          本分支**仅额外注入 Linux 打包基础设施**，不做任何 UI 或功能性修改：
+
+          - `linux-x64` 构建目标与 `electron-builder` 配置
+          - `package-linux.sh` 一键打包脚本
+          - 应用内「检查更新」指向 `linux-latest-official` 自动更新源
+
+          适合需要官方原版体验、且希望享受自动更新便利的用户。
+
+          #### 自动构建说明
+
+          本分支每次推送代码即自动触发云端构建（README / docs 变更除外），构建成功后同时执行：
+
+          - 发布版本化 Release（本页面）
+          - 刷新 `linux-latest-official` 自动更新源
+
+          ### 制品
 
           | 制品 | 类型 | 说明 |
           |------|------|------|
@@ -284,34 +342,36 @@ jobs:
           - 构建触发：代码推送自动构建并发布
           - 构建环境：GitHub Actions · ubuntu-24.04
 
-          ### 分支说明
-
-          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游构建版**，功能与上游 `master` 完全一致。
-
-          > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-package-official`）
-
-          #### 与上游的区别
-
-          本分支**仅额外注入 Linux 打包基础设施**，不做任何 UI 或功能性修改：
-
-          - `linux-x64` 构建目标与 `electron-builder` 配置
-          - `package-linux.sh` 一键打包脚本
-          - 应用内「检查更新」指向 `linux-latest-official` 自动更新源
-
-          适合需要官方原版体验、且希望享受自动更新便利的用户。
-
-          #### 自动构建说明
-
-          本分支每次推送代码即自动触发云端构建（README / docs 变更除外），构建成功后同时执行：
-
-          - 发布版本化 Release（本页面）
-          - 刷新 `linux-latest-official` 自动更新源
-
           ---
 
           ## English
 
           This release is built automatically by GitHub Actions on a **ubuntu-24.04** runner from the `linux-package-official` branch.
+
+          ### Branch Description
+
+          An **official upstream build** of [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness), functionally identical to upstream `master`.
+
+          > Repository: [yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness) (branch `linux-package-official`)
+
+          #### Differences from Upstream
+
+          This branch **only adds Linux packaging infrastructure** — no UI or functional changes:
+
+          - `linux-x64` build target and `electron-builder` configuration
+          - `package-linux.sh` one-shot packaging script
+          - In-app "Check for Updates" points to the `linux-latest-official` auto-update feed
+
+          Ideal for users who want the authentic upstream experience with the convenience of auto-update.
+
+          #### Automatic Builds
+
+          Every push to this branch (except README / docs) triggers a cloud build, which upon success:
+
+          - Publishes a versioned Release (this page)
+          - Refreshes the `linux-latest-official` auto-update feed
+
+          ### Artifacts
 
           | Artifact | Type | Description |
           |----------|------|-------------|
@@ -336,29 +396,6 @@ jobs:
           - Branch: `linux-package-official` (Official Upstream Edition)
           - Trigger: automatic on push
           - Runner: GitHub Actions · ubuntu-24.04
-
-          ### Branch Description
-
-          An **official upstream build** of [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness), functionally identical to upstream `master`.
-
-          > Repository: [yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness) (branch `linux-package-official`)
-
-          #### Differences from Upstream
-
-          This branch **only adds Linux packaging infrastructure** — no UI or functional changes:
-
-          - `linux-x64` build target and `electron-builder` configuration
-          - `package-linux.sh` one-shot packaging script
-          - In-app "Check for Updates" points to the `linux-latest-official` auto-update feed
-
-          Ideal for users who want the authentic upstream experience with the convenience of auto-update.
-
-          #### Automatic Builds
-
-          Every push to this branch (except README / docs) triggers a cloud build, which upon success:
-
-          - Publishes a versioned Release (this page)
-          - Refreshes the `linux-latest-official` auto-update feed
 
           ---
 
@@ -401,9 +438,11 @@ jobs:
 
           1. **自定义标题栏** —「应用 / 编辑」菜单内嵌进标题栏，与 Windows 版体验一致，节约屏幕高度
           2. **去除原生菜单栏** — 抑制 GTK 菜单栏泄漏的调试项，界面更干净
-          3. **系统托盘** — 关闭后驻留托盘，托盘图标可快速「显示窗口 / 退出」
+          3. **系统托盘** — 关闭后驻留托盘，托盘图标可快速「显示窗口 / 退出」；收到通知时图标闪烁（可开关）
           4. **关闭行为可配置** — 通用设置可选「隐藏到托盘（默认）」或「退出应用」
-          5. **桌面通知** — 后台任务、审核请求、模型提问等场景弹出原生通知，通知分类可精细开关
+          5. **桌面通知** — 以下 10 类场景弹出原生通知，每类可独立开关，另有三项全局开关：
+             · 审核请求 · 模型提问 · 后台任务 · 子代理结束 · 凭证需要
+             · 远程接入 · 新会话 · 插件操作 · 定时提醒 · Goal 状态
           6. **自动更新** — 应用内「检查更新」指向此 `linux-latest` 自动更新源，AppImage 支持自动下载安装
 
           ### 自动更新源
@@ -433,9 +472,11 @@ jobs:
 
           1. **Custom title bar** — App and Edit menu embedded in the title bar, matching the Windows experience and saving screen real estate
           2. **No native menu bar** — Suppresses leftover GTK menu bar leak from debug builds for a cleaner look
-          3. **System tray** — App stays in the tray after closing; tray icon offers quick "Show Window / Quit"
+          3. **System tray** — App stays in the tray after closing; tray icon offers quick "Show Window / Quit"; icon flashes on notification (toggleable)
           4. **Configurable close behavior** — General settings toggle: "Hide to tray" (default) or "Quit application"
-          5. **Desktop notifications** — Native notifications for background tasks, approval requests, model questions, etc., with per-category toggle switches
+          5. **Desktop notifications** — 10 event categories, each independently toggleable, plus three global toggles:
+             · Approval requests · Model questions · Background jobs · Subagent finished · Credentials needed
+             · Remote access · New session · Plugin operations · Schedule reminders · Goal status
           6. **Auto-update** — In-app "Check for Updates" points to this `linux-latest` auto-update feed; AppImage auto-downloads and installs
 
           ### Auto-Update Feed
@@ -486,7 +527,7 @@ jobs:
 
           ### 分支说明
 
-          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游构建版**，功能与上游 `master` 完全一致。
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游版**，功能与上游 `master` 完全一致。
 
           > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-package-official`）
 
@@ -500,7 +541,7 @@ jobs:
 
           ### 自动更新源
 
-          此 Release 是 DeepSeek Harness Linux x64 **官方构建版** 的自动更新源。每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
+          此 Release 是 DeepSeek Harness Linux x64 **官方上游版** 的自动更新源。每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
 
           | 属性 | 值 |
           |------|-----|
