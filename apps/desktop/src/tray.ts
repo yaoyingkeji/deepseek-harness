@@ -20,7 +20,6 @@ export class DesktopTray {
   private readonly normalIcon: NativeImage
   private readonly blankIcon: NativeImage
   private flashTimer: ReturnType<typeof setInterval> | undefined
-  private flashing = false
 
   /** @param options - Icon path, locale reader, and the open and quit actions. */
   constructor(private readonly options: DesktopTrayOptions) {
@@ -58,7 +57,6 @@ export class DesktopTray {
     if (this.flashTimer !== undefined || this.tray === undefined) return
     const { tray, normalIcon, blankIcon } = this
     let showNormal = true
-    this.flashing = true
     this.flashTimer = setInterval(() => {
       tray.setImage(showNormal ? blankIcon : normalIcon)
       showNormal = !showNormal
@@ -71,7 +69,6 @@ export class DesktopTray {
       clearInterval(this.flashTimer)
       this.flashTimer = undefined
     }
-    this.flashing = false
     if (this.tray !== undefined) {
       this.tray.setImage(this.normalIcon)
     }
