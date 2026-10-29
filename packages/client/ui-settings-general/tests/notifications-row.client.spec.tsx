@@ -39,7 +39,9 @@ function notificationsBridge(initial: DesktopNotificationSettings) {
 }
 
 const DEFAULTS: DesktopNotificationSettings = {
-  approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false, focused: false,
+  approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
+  plugin: false, schedule: false, goal: false, nonCurrentSession: false, trayFlash: false,
+  focused: false,
 }
 
 afterEach(() => { cleanup(); vi.unstubAllEnvs() })
@@ -50,7 +52,7 @@ describe('DesktopNotificationsRow', () => {
     const injected: DesktopNotificationsRowInjected = { bridge }
     const view = render(<DesktopNotificationsRow {...kit} t={t} {...injected} />)
     const switches = screen.getAllByRole('switch')
-    expect(switches).toHaveLength(8)
+    expect(switches).toHaveLength(13)
     // Approval/question/job default on; subagent/credential/remote/session default off.
     expect(screen.getByRole('switch', { name: 'Approval requests' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.getByRole('switch', { name: 'Subagent finished' }).getAttribute('aria-checked')).toBe('false')
