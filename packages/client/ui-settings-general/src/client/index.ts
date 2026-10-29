@@ -15,6 +15,7 @@ import type {} from '@deepseek-ai/dsh-api-remote-access/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/remote-events'
 import type {} from '@deepseek-ai/dsh-subagent'
+import type {} from '@deepseek-ai/dsh-goal'
 // Type-only: pulls the connection/remote-requested Cordis event declaration.
 import type {} from '@deepseek-ai/dsh-client-connection/src/remote-connection-request.ts'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
