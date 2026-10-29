@@ -48,8 +48,10 @@ export const LINUX_UPDATE_RELEASE_NOTES = `linux-custom-titlebar 分支更新
 
 - 自定义标题栏：「应用 / 编辑」菜单内嵌标题栏，节约屏幕高度
 - 去除原生菜单栏，移除多余的 Toggle Developer Tools 调试项
-- 系统托盘：窗口关闭后驻留后台，托盘图标可「显示窗口 / 退出」
-- 通用设置可配置关闭行为：点击 X 后「隐藏到托盘（默认）/ 退出应用」`
+- 系统托盘：窗口关闭后驻留后台，托盘图标可「显示窗口 / 退出」；收到通知时图标闪烁（可开关）
+- 关闭行为可配置：点击 X 后「隐藏到托盘（默认）/ 退出应用」
+- 桌面通知（10 类）：审核请求、模型提问、后台任务、子代理结束、凭证需要、远程接入、新会话、插件操作、定时提醒、Goal 状态；每类独立开关，含「聚焦时不弹出」「非当前会话不弹出」「托盘闪烁」全局开关
+- 自动更新：AppImage 自动下载安装`
 
 /**
  * Resolve the Linux auto-update feed: the fork's stable GitHub release
