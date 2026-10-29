@@ -43,6 +43,7 @@ export const API_REMOTE_FORWARDED_EVENTS = [
   { event: 'credentials/record-updated', mode: 'emit' },
   { event: 'credentials/reference-updated', mode: 'emit' },
   { event: 'goal/activation-changed', mode: 'emit' },
+  { event: 'goal/completed-or-blocked', mode: 'emit' },
   { event: 'cordis/request-run', mode: 'emit' },
   { event: 'cordis/request-run-resolved', mode: 'emit' },
   { event: 'cordis/dynamic-package', mode: 'emit' },
@@ -59,5 +60,6 @@ export const API_REMOTE_FORWARDED_EVENTS = [
   { event: 'plugin-market/changed', mode: 'emit' },
   { event: 'settings/document-updated', mode: 'emit' },
   { event: 'schedule/changed', mode: 'emit' },
+  { event: 'schedule/reminder-delivered', mode: 'emit' },
   { event: 'user-questions/request', mode: 'waterfall' },
 ] as const satisfies readonly TypertForwardableEventEntry[]

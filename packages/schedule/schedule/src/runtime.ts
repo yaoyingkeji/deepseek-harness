@@ -126,6 +126,16 @@ export class ScheduleRuntime {
         agent.followup(message)
         const flushed = await this.ctx.sessions.flush(agent.session)
         if (!flushed) throw new Error('Session persistence did not acknowledge the reminder')
+        // Notify desktop of delivered scheduled reminders.
+        try {
+          this.ctx.emit('schedule/reminder-delivered', {
+            sessionId: task.sessionId,
+            count: admitted.length,
+          })
+        } catch (emitError: unknown) {
+          // A failed notification emission must not block the reminder delivery.
+          this.ctx.logger.warn(`schedule: reminder-delivered event failed: ${String(emitError)}`)
+        }
         const deliveredAt = new Date(Date.now()).toISOString()
         if (!isRecurringScheduleRecord(task.record)) {
           await this.commit({

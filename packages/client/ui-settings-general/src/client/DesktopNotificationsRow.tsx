@@ -6,6 +6,7 @@ import {
   DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED,
   type DesktopNotificationCategory,
   type DesktopNotificationSettings,
+  type DesktopNotificationSwitchKey,
   type DesktopNotificationsBridge,
 } from '../types.ts'
 import css from './DesktopNotificationsRow.module.css'
@@ -17,11 +18,17 @@ export interface DesktopNotificationsRowInjected {
 
 /** Notification categories rendered as individual switches. */
 const CATEGORIES: readonly DesktopNotificationCategory[] = [
-  'approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session',
+  'approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal',
 ]
 
 /** Focus-mode switch key: whether notifications also appear while focused. */
 const FOCUSED_KEY = 'focused' as const
+
+/** Non-current-session switch key: whether background sessions fire notifications. */
+const NON_CURRENT_SESSION_KEY = 'nonCurrentSession' as const
+
+/** Tray-flash switch key: whether the tray icon flashes on notification. */
+const TRAY_FLASH_KEY = 'trayFlash' as const
 
 /**
  * Render the desktop notification category switches with a quick all-on/all-off
@@ -34,7 +41,9 @@ const FOCUSED_KEY = 'focused' as const
 export function DesktopNotificationsRow({ bridge, t }:
   PropsRuntime<'settings.general.item'> & PropsLocale<'settings'> & InjectFace<DesktopNotificationsRowInjected>) {
   const [settings, setSettings] = useState<DesktopNotificationSettings>({
-    approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false, focused: false,
+    approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
+    plugin: true, schedule: true, goal: true,
+    focused: false, nonCurrentSession: true, trayFlash: true,
   })
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -49,7 +58,7 @@ export function DesktopNotificationsRow({ bridge, t }:
     return () => { live = false }
   }, [bridge])
   if (bridge === undefined) return null
-  const setEnabled = (category: DesktopNotificationCategory | typeof FOCUSED_KEY, enabled: boolean): void => {
+  const setEnabled = (category: DesktopNotificationSwitchKey, enabled: boolean): void => {
     touched.current = true
     setFailed(false)
     setBusy(true)
@@ -97,6 +106,26 @@ export function DesktopNotificationsRow({ bridge, t }:
       </div>
       <Switch checked={settings[FOCUSED_KEY]} disabled={busy} label={t('notifications.focused')}
         onChange={(next) => { setEnabled(FOCUSED_KEY, next) }} />
+    </div>
+    <div className={css.row} key={NON_CURRENT_SESSION_KEY}>
+      <div className={css.labels}>
+        <div className={css.labelRow}>
+          <div className={css.label}>{t(`notifications.${NON_CURRENT_SESSION_KEY}`)}</div>
+          <span className={css.help} title={t(`notifications.${NON_CURRENT_SESSION_KEY}Hint`)}>?</span>
+        </div>
+      </div>
+      <Switch checked={settings[NON_CURRENT_SESSION_KEY]} disabled={busy} label={t(`notifications.${NON_CURRENT_SESSION_KEY}`)}
+        onChange={(next) => { setEnabled(NON_CURRENT_SESSION_KEY, next) }} />
+    </div>
+    <div className={css.row} key={TRAY_FLASH_KEY}>
+      <div className={css.labels}>
+        <div className={css.labelRow}>
+          <div className={css.label}>{t(`notifications.${TRAY_FLASH_KEY}`)}</div>
+          <span className={css.help} title={t(`notifications.${TRAY_FLASH_KEY}Hint`)}>?</span>
+        </div>
+      </div>
+      <Switch checked={settings[TRAY_FLASH_KEY]} disabled={busy} label={t(`notifications.${TRAY_FLASH_KEY}`)}
+        onChange={(next) => { setEnabled(TRAY_FLASH_KEY, next) }} />
     </div>
     {CATEGORIES.map(category => (
       <div className={css.row} key={category}>

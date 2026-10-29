@@ -1,6 +1,6 @@
 /** System tray: the always-present way back to a hidden window and the explicit quit entry (Windows and Linux). */
 
-import { Menu, nativeImage, Tray } from 'electron'
+import { Menu, nativeImage, Tray, type NativeImage } from 'electron'
 import type { DesktopLocale } from './locale.ts'
 
 /** Main-process actions the tray triggers; both run the same paths as the window and application menu. */
@@ -17,10 +17,19 @@ export interface DesktopTrayOptions {
 /** Tray icon present for the whole run, not only while the window is hidden. */
 export class DesktopTray {
   private tray: Tray | undefined
+  private readonly normalIcon: NativeImage
+  private readonly blankIcon: NativeImage
+  private flashTimer: ReturnType<typeof setInterval> | undefined
+  private flashing = false
 
   /** @param options - Icon path, locale reader, and the open and quit actions. */
   constructor(private readonly options: DesktopTrayOptions) {
-    const tray = new Tray(nativeImage.createFromPath(options.iconPath))
+    const normalIcon = nativeImage.createFromPath(options.iconPath)
+    this.normalIcon = normalIcon
+    const { width, height } = normalIcon.getSize()
+    this.blankIcon = nativeImage.createFromBuffer(
+      Buffer.alloc(width * height * 4), { width, height })
+    const tray = new Tray(normalIcon)
     this.tray = tray
     tray.on('click', () => { options.open() })
     this.relabel()
@@ -39,8 +48,38 @@ export class DesktopTray {
     ]))
   }
 
+  /**
+   * Flash the tray icon by alternating between the normal icon and a
+   * blank one every 500 ms — analogous to QQ / WeChat on Linux. A second
+   * call while already flashing is a no-op; the effect stops automatically
+   * when the window is opened.
+   */
+  flash(): void {
+    if (this.flashTimer !== undefined || this.tray === undefined) return
+    const { tray, normalIcon, blankIcon } = this
+    let showNormal = true
+    this.flashing = true
+    this.flashTimer = setInterval(() => {
+      tray.setImage(showNormal ? blankIcon : normalIcon)
+      showNormal = !showNormal
+    }, 500)
+  }
+
+  /** Stop flashing immediately and restore the normal tray icon. */
+  stopFlash(): void {
+    if (this.flashTimer !== undefined) {
+      clearInterval(this.flashTimer)
+      this.flashTimer = undefined
+    }
+    this.flashing = false
+    if (this.tray !== undefined) {
+      this.tray.setImage(this.normalIcon)
+    }
+  }
+
   /** Remove the icon; called once the quit is confirmed so no dead icon outlives the process. */
   dispose(): void {
+    this.stopFlash()
     const tray = this.tray
     this.tray = undefined
     tray?.destroy()

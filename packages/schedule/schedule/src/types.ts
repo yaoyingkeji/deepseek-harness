@@ -482,5 +482,7 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'schedule/changed'(): void
+    /** A scheduled reminder has been delivered as a user message. */
+    'schedule/reminder-delivered'(payload: { sessionId: string; count: number }): void
   }
 }

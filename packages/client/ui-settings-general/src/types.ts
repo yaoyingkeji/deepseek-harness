@@ -40,10 +40,10 @@ export interface DesktopCloseBehaviorBridge {
 }
 
 /** Desktop notification categories configurable from the General settings. */
-export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session'
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session' | 'plugin' | 'schedule' | 'goal'
 
 /** Notification switch keys: the seven categories plus the focus-mode preference. */
-export type DesktopNotificationSwitchKey = DesktopNotificationCategory | 'focused'
+export type DesktopNotificationSwitchKey = DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash'
 
 /**
  * Resolved notification category switches plus the focus-mode preference.
@@ -51,10 +51,10 @@ export type DesktopNotificationSwitchKey = DesktopNotificationCategory | 'focuse
  * notifications also appear while the window has focus (false = only while
  * unfocused; true = always).
  */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean }
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean; nonCurrentSession: boolean; trayFlash: boolean }
 
 /** Categories off by default because they can flood the user with notices. */
-export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session']
+export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session', 'plugin', 'schedule']
 
 /** Optional carrier API for the desktop notification category switches. */
 export interface DesktopNotificationsBridge {

@@ -1405,7 +1405,42 @@ export class PluginManagerController {
   }
 
   private notifyHiddenInstall(outcome: Extract<ManagerNotice, { kind: 'install' }>['outcome']): void {
-    if (!this.getSnapshot().install.open) this.patch({ notice: { kind: 'install', outcome, seq: ++this.noticeSeq } })
+    if (!this.getSnapshot().install.open) {
+      this.patch({ notice: { kind: 'install', outcome, seq: ++this.noticeSeq } })
+      void this.desktopNotify(outcome)
+    }
+  }
+
+  /** Send a desktop notification for a completed or failed background install. */
+  private desktopNotify(outcome: Extract<ManagerNotice, { kind: 'install' }>['outcome']): void {
+    try {
+      const root = typeof document === 'undefined' ? undefined : document.documentElement
+      const zh = root === undefined ? false
+        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+      const subject = this.getSnapshot().install.subject
+      const name = subject?.name ?? subject?.spec ?? 'plugin'
+      if (outcome === 'done') {
+        void (globalThis as typeof globalThis & { dshDesktop?: {
+          protocolVersion: number; notify?: (input: {
+            category: string; title: string; body: string; sessionId?: string
+          }) => Promise<void>
+        } }).dshDesktop?.notify?.({
+          category: 'plugin',
+          title: zh ? '插件安装完成' : 'Plugin installed',
+          body: zh ? `${name} 已安装` : `${name} installed`,
+        })
+      } else if (outcome === 'failed' || outcome === 'unconfirmed' || outcome === 'unknown') {
+        void (globalThis as typeof globalThis & { dshDesktop?: {
+          protocolVersion: number; notify?: (input: {
+            category: string; title: string; body: string; sessionId?: string
+          }) => Promise<void>
+        } }).dshDesktop?.notify?.({
+          category: 'plugin',
+          title: zh ? '插件安装失败' : 'Plugin installation failed',
+          body: zh ? `${name} 安装失败` : `${name} installation failed`,
+        })
+      }
+    } catch { /* ignore: notification delivery must never throw into the caller path */ }
   }
 
   /**

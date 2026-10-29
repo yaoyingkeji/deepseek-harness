@@ -21,22 +21,25 @@ export interface DesktopSettings {
 export type DesktopCloseBehavior = 'hide' | 'quit'
 
 /** Notification categories that can be toggled from the General settings. */
-export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session'
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session' | 'plugin' | 'schedule' | 'goal'
 
 /**
- * Resolved notification category switches plus the focus-mode preference.
- * Category keys are all enabled by default except the recommended-off set;
- * `focused` decides whether notifications also appear while the window has
- * focus (false = only when the window is unfocused, the non-disturbing
- * default; true = always, convenient for verifying every category).
+ * Resolved notification category switches plus the focus-mode and tray-flash
+ * preferences. Category keys are all enabled by default except the
+ * recommended-off set; `focused` decides whether notifications also appear
+ * while the window has focus (false = only when the window is unfocused, the
+ * non-disturbing default; true = always, convenient for verifying every
+ * category); `nonCurrentSession` (true by default) sends notifications even
+ * for non-current sessions; `trayFlash` (true by default) makes the tray icon
+ * flash when a notification arrives.
  */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean }
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean; nonCurrentSession: boolean; trayFlash: boolean }
 
 /**
  * Categories that can flood the user with notices and are therefore off by
  * default; the General settings marks them with a recommendation warning.
  */
-export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session']
+export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session', 'plugin', 'schedule']
 
 /** Every notification category with its default-enabled state. */
 export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {
@@ -47,7 +50,12 @@ export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {
   credential: false,
   remote: false,
   session: false,
+  plugin: true,
+  schedule: true,
+  goal: true,
   focused: false,
+  nonCurrentSession: true,
+  trayFlash: true,
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -97,7 +105,7 @@ export function readDesktopSettings(userData: string): DesktopSettings {
       throw new Error('notifications must be an object')
     }
     const notifications: DesktopNotificationSettings = { ...DESKTOP_NOTIFICATION_DEFAULTS }
-    for (const category of ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session'] as const) {
+    for (const category of ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal'] as const) {
       const enabled = value.notifications?.[category]
       if (enabled !== undefined && typeof enabled !== 'boolean') {
         throw new Error(`notifications.${category} must be true or false`)
@@ -109,6 +117,16 @@ export function readDesktopSettings(userData: string): DesktopSettings {
       throw new Error('notifications.focused must be true or false')
     }
     notifications.focused = focused ?? DESKTOP_NOTIFICATION_DEFAULTS.focused
+    const nonCurrentSession = value.notifications?.nonCurrentSession
+    if (nonCurrentSession !== undefined && typeof nonCurrentSession !== 'boolean') {
+      throw new Error('notifications.nonCurrentSession must be true or false')
+    }
+    notifications.nonCurrentSession = nonCurrentSession ?? DESKTOP_NOTIFICATION_DEFAULTS.nonCurrentSession
+    const trayFlash = value.notifications?.trayFlash
+    if (trayFlash !== undefined && typeof trayFlash !== 'boolean') {
+      throw new Error('notifications.trayFlash must be true or false')
+    }
+    notifications.trayFlash = trayFlash ?? DESKTOP_NOTIFICATION_DEFAULTS.trayFlash
     return {
       updates: { allowTestAuthPopupWindow: allow ?? false },
       window: { closeBehavior: closeBehavior ?? 'hide' },

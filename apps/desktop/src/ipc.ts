@@ -38,6 +38,7 @@ export const DESKTOP_IPC = {
   notificationsSet: 'dsh-desktop:notifications-set',
   notify: 'dsh-desktop:notify',
   notifyAction: 'dsh-desktop:notify-action',
+  setCurrentSession: 'dsh-desktop:set-current-session',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
   windowMaximized: 'dsh-desktop:window-maximized',
@@ -92,15 +93,17 @@ export interface DesktopUpdatePresentation {
 export type DesktopCloseBehavior = 'hide' | 'quit'
 
 /** Desktop notification categories configurable from the General settings. */
-export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session'
+export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session' | 'plugin' | 'schedule' | 'goal'
 
 /**
- * Resolved notification category switches plus the focus-mode preference.
- * Category keys select which event kinds notify; `focused` decides whether
- * notifications also appear while the window has focus (false = only while
- * unfocused; true = always).
+ * Resolved notification category switches plus focus, non-current-session
+ * and tray-flash preferences. Category keys select which event kinds notify;
+ * `focused` decides whether notifications also appear while the window has
+ * focus (false = only while unfocused; true = always); `nonCurrentSession`
+ * sends notifications even for non-current sessions; `trayFlash` makes the
+ * tray icon flash on notifications.
  */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean }
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean; nonCurrentSession: boolean; trayFlash: boolean }
 
 /** Localized notification payload sent by the web client. */
 export interface DesktopNotifyInput {
@@ -141,8 +144,13 @@ export interface DshDesktopProductApi {
   notify(input: DesktopNotifyInput): Promise<void>
   readonly notifications: {
     get(): Promise<DesktopNotificationSettings>
-    set(category: DesktopNotificationCategory, enabled: boolean): Promise<void>
+    set(category: DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash', enabled: boolean): Promise<void>
   }
+  /**
+   * Track which session is currently active in the UI, so non-current-session
+   * filtering can decide whether to suppress notifications for background tabs.
+   */
+  setCurrentSession(sessionId: string | undefined): Promise<void>
   /**
    * Subscribe to notification clicks. The shell focuses the window and then
    * pushes the notification's session (when known) so the UI can surface its
@@ -151,7 +159,6 @@ export interface DshDesktopProductApi {
    * @returns unsubscribe function.
    */
   onNotifyAction(listener: (sessionId: string | undefined) => void): () => void
-}
 
 /** Scheme of Desktop-owned application documents. */
 export const SCHEME = 'dsh-app'

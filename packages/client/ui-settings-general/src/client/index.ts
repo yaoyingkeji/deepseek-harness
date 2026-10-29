@@ -188,6 +188,27 @@ export function apply(ctx: ClientContext): void {
     notifyDesktop('session', '新会话', '已创建新的会话',
       'New session', 'A new session has been created', value.sessionId)
   })
+  ctx.remote.$on('goal/completed-or-blocked', (notice) => {
+    const value = notice as { sessionId?: string; operation?: string; objective?: string }
+    const zhOperation = value.operation === 'complete' ? '已完成' : '已阻塞'
+    const enOperation = value.operation === 'complete' ? 'completed' : 'blocked'
+    const objective = value.objective ?? ''
+    notifyDesktop('goal',
+      'Goal ' + zhOperation,
+      'Goal 目标' + (objective ? `"${objective}"` : '') + zhOperation,
+      'Goal ' + enOperation,
+      'Goal ' + (objective ? `"${objective}" ` : '') + enOperation,
+      value.sessionId)
+  })
+  ctx.remote.$on('schedule/reminder-delivered', (notice) => {
+    const value = notice as { sessionId?: string; count?: number }
+    const count = value.count ?? 1
+    const zhBody = count > 1 ? `${count} 个定时任务已触发` : '定时提醒已触发'
+    const enBody = count > 1 ? `${count} scheduled tasks fired` : 'Scheduled reminder fired'
+    notifyDesktop('schedule', '定时提醒到期', zhBody,
+      'Schedule reminder due', enBody,
+      value.sessionId)
+  })
 
   // Notification clicks surface the owning session or the relevant settings
   // view. The shell already focuses the window; here we switch the workspace

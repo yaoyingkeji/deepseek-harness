@@ -445,6 +445,8 @@ async function main(): Promise<void> {
   let mandatoryUI: DesktopMandatoryUpdateWindow | undefined
   let policyAuth: DesktopPolicyTestAuth | undefined
   let tray: DesktopTray | undefined
+  /** Track which session is currently shown in the UI. */
+  let currentSessionId: string | undefined
   /**
    * The operating system is ending the session: the quit skips its confirmation. Windows sets it
    * on the definitive session-end message. macOS sets it on the power-off notification, which
@@ -935,7 +937,7 @@ async function main(): Promise<void> {
     if (typeof input !== 'object' || input === null
       || typeof (input as { title?: unknown }).title !== 'string'
       || typeof (input as { body?: unknown }).body !== 'string'
-      || !(['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session'] as const)
+      || !(['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal'] as const)
         .includes((input as { category?: unknown }).category as DesktopNotificationCategory)) {
       throw new Error('desktop notify: title, body and category are required')
     }
@@ -952,6 +954,12 @@ async function main(): Promise<void> {
     // verifying every category).
     if (!desktopSettings.notifications.focused
       && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()) return
+    // Non-current-session filter: when off, notifications for sessions that
+    // are not the currently active tab are suppressed. Notifications without
+    // a sessionId always pass through. Default is ON.
+    if (!desktopSettings.notifications.nonCurrentSession
+      && sessionId !== undefined && currentSessionId !== undefined
+      && sessionId !== currentSessionId) return
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
       : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
@@ -966,6 +974,7 @@ async function main(): Promise<void> {
         }
       })
       notification.show()
+      if (desktopSettings.notifications.trayFlash) tray?.flash()
     } catch (error) {
       console.warn('desktop notification: unavailable', error)
     }
@@ -978,17 +987,27 @@ async function main(): Promise<void> {
   })
   ipcMain.handle(DESKTOP_IPC.notificationsSet, (event, category: unknown, enabled: unknown) => {
     assertProductSender(event)
-    const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'focused'] as const
+    const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal', 'focused', 'nonCurrentSession', 'trayFlash'] as const
     if (!categories.includes(category as typeof categories[number])) {
       throw new Error('desktop notifications: unknown category')
     }
     if (typeof enabled !== 'boolean') throw new Error('desktop notifications: enabled must be true or false')
-    const typedCategory = category as DesktopNotificationCategory | 'focused'
+    const typedCategory = category as DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash'
     desktopSettings = {
       ...desktopSettings,
       notifications: { ...desktopSettings.notifications, [typedCategory]: enabled },
     }
     writeDesktopSettings(app.getPath('userData'), desktopSettings)
+  })
+
+  // Track which session the UI is currently viewing so non-current-session
+  // filtering can suppress background-session notifications when disabled.
+  ipcMain.handle(DESKTOP_IPC.setCurrentSession, (event, sessionId: unknown) => {
+    assertProductSender(event)
+    if (sessionId !== undefined && typeof sessionId !== 'string') {
+      throw new Error('desktop set-current-session: sessionId must be a string or undefined')
+    }
+    currentSessionId = sessionId
   })
 
   let promptOperation: Promise<void> | undefined
@@ -1222,7 +1241,7 @@ async function main(): Promise<void> {
     // The tray is the way back to a hidden window; without it, relaunching the application still focuses it.
     try {
       tray = new DesktopTray({ iconPath: trayIconPath, locale: currentDesktopLocale,
-        open: () => { focusPrimaryWindow() }, quit: () => { app.quit() } })
+        open: () => { tray?.stopFlash(); focusPrimaryWindow() }, quit: () => { app.quit() } })
     } catch (error) { console.warn('desktop tray: unavailable', error) }
   }
   const backgroundNotice = process.platform === 'win32'
