@@ -393,9 +393,22 @@ jobs:
           LATEST_NOTES=$(cat <<'LATEST_EOF'
           ## 中文
 
-          此 Release 是 DeepSeek Harness Linux x64 **定制优化版** 的自动更新源。
+          ### 分支说明
 
-          每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 **Deepin v25 桌面端优化修改版**，适配并测试通过，其他 Linux 系统需自行测试。
+
+          > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-custom-titlebar`）
+
+          1. **自定义标题栏** —「应用 / 编辑」菜单内嵌进标题栏，与 Windows 版体验一致，节约屏幕高度
+          2. **去除原生菜单栏** — 抑制 GTK 菜单栏泄漏的调试项，界面更干净
+          3. **系统托盘** — 关闭后驻留托盘，托盘图标可快速「显示窗口 / 退出」
+          4. **关闭行为可配置** — 通用设置可选「隐藏到托盘（默认）」或「退出应用」
+          5. **桌面通知** — 后台任务、审核请求、模型提问等场景弹出原生通知，通知分类可精细开关
+          6. **自动更新** — 应用内「检查更新」指向此 `linux-latest` 自动更新源，AppImage 支持自动下载安装
+
+          ### 自动更新源
+
+          此 Release 是 DeepSeek Harness Linux x64 **定制优化版** 的自动更新源。每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
 
           | 属性 | 值 |
           |------|-----|
@@ -412,9 +425,22 @@ jobs:
 
           ## English
 
-          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Custom Edition.
+          ### Branch Description
 
-          After every successful cloud build, GitHub Actions automatically refreshes this release to the latest version. The in-app "Check for Updates" reads artifact metadata from this page to detect new versions.
+          An **optimized fork** of [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) for the **Deepin v25 desktop**, tested and verified. Other Linux distributions require self-testing.
+
+          > Repository: [yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness) (branch `linux-custom-titlebar`)
+
+          1. **Custom title bar** — App and Edit menu embedded in the title bar, matching the Windows experience and saving screen real estate
+          2. **No native menu bar** — Suppresses leftover GTK menu bar leak from debug builds for a cleaner look
+          3. **System tray** — App stays in the tray after closing; tray icon offers quick "Show Window / Quit"
+          4. **Configurable close behavior** — General settings toggle: "Hide to tray" (default) or "Quit application"
+          5. **Desktop notifications** — Native notifications for background tasks, approval requests, model questions, etc., with per-category toggle switches
+          6. **Auto-update** — In-app "Check for Updates" points to this `linux-latest` auto-update feed; AppImage auto-downloads and installs
+
+          ### Auto-Update Feed
+
+          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Custom Edition. After every successful cloud build, GitHub Actions automatically refreshes this release to the latest version. The in-app "Check for Updates" reads artifact metadata from this page to detect new versions.
 
           | Property | Value |
           |----------|-------|
@@ -458,9 +484,23 @@ jobs:
           LATEST_NOTES=$(cat <<'LATEST_EOF'
           ## 中文
 
-          此 Release 是 DeepSeek Harness Linux x64 **官方构建版** 的自动更新源。
+          ### 分支说明
 
-          每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游构建版**，功能与上游 `master` 完全一致。
+
+          > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-package-official`）
+
+          本分支**仅额外注入 Linux 打包基础设施**，不做任何 UI 或功能性修改：
+
+          - `linux-x64` 构建目标与 `electron-builder` 配置
+          - `package-linux.sh` 一键打包脚本
+          - 应用内「检查更新」指向此 `linux-latest-official` 自动更新源
+
+          适合需要官方原版体验、且希望享受自动更新便利的用户。
+
+          ### 自动更新源
+
+          此 Release 是 DeepSeek Harness Linux x64 **官方构建版** 的自动更新源。每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
 
           | 属性 | 值 |
           |------|-----|
@@ -477,9 +517,23 @@ jobs:
 
           ## English
 
-          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Official Edition.
+          ### Branch Description
 
-          After every successful cloud build, GitHub Actions automatically refreshes this release to the latest version. The in-app "Check for Updates" reads artifact metadata from this page to detect new versions.
+          An **official upstream build** of [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness), functionally identical to upstream `master`.
+
+          > Repository: [yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness) (branch `linux-package-official`)
+
+          This branch **only adds Linux packaging infrastructure** — no UI or functional changes:
+
+          - `linux-x64` build target and `electron-builder` configuration
+          - `package-linux.sh` one-shot packaging script
+          - In-app "Check for Updates" points to this `linux-latest-official` auto-update feed
+
+          Ideal for users who want the authentic upstream experience with the convenience of auto-update.
+
+          ### Auto-Update Feed
+
+          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Official Edition. After every successful cloud build, GitHub Actions automatically refreshes this release to the latest version. The in-app "Check for Updates" reads artifact metadata from this page to detect new versions.
 
           | Property | Value |
           |----------|-------|
