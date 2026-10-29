@@ -626,13 +626,18 @@ export class GoalService extends TypertRemoteService {
     // completed or blocked; the scoped goal/changed cannot cross the
     // Remote event bridge.
     if (change.operation === 'complete' || change.operation === 'block') {
-      this.ctx.emit('goal/completed-or-blocked', {
-        sessionId: agent.session.id,
-        operation: change.operation as 'complete' | 'block',
-        ...(change.operation === 'complete' ? {} : {
+      if (change.operation === 'complete') {
+        this.ctx.emit('goal/completed-or-blocked', {
+          sessionId: agent.session.id,
+          operation: 'complete',
+        })
+      } else {
+        this.ctx.emit('goal/completed-or-blocked', {
+          sessionId: agent.session.id,
+          operation: 'block',
           objective: notification.goal?.objective ?? (change as { goal?: { objective?: string } }).goal?.objective,
-        }),
-      })
+        })
+      }
     }
   }
 

@@ -16,6 +16,7 @@ import type {} from '@deepseek-ai/dsh-permission-presets/types'
 import type {} from '@deepseek-ai/dsh-plugin-manager/types'
 import type {} from '@deepseek-ai/dsh-plugin-market/types'
 import type {} from '@deepseek-ai/dsh-schedule/client'
+import type {} from '@deepseek-ai/dsh-goal'
 import type {} from '@deepseek-ai/dsh-subagent'
 import type { TypertForwardableEventEntry } from '@deepseek-ai/dsh-typert-protocol'
 
