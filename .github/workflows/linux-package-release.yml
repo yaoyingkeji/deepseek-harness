@@ -62,15 +62,9 @@ jobs:
           if [ "$BRANCH" = "linux-custom-titlebar" ]; then
             echo "slug=custom" >> "$GITHUB_OUTPUT"
             echo "name_suffix=定制优化版" >> "$GITHUB_OUTPUT"
-            echo "name_suffix_en=Custom Edition" >> "$GITHUB_OUTPUT"
-            echo "branch_desc_cn=本分支为 DeepSeek Harness 的 Deepin v25 桌面端优化修改版，适配并测试通过，其他 Linux 系统需自行测试。" >> "$GITHUB_OUTPUT"
-            echo "branch_desc_en=This branch is an optimized fork of DeepSeek Harness for the Deepin v25 desktop, tested and verified. Other Linux distributions require self-testing." >> "$GITHUB_OUTPUT"
           else
             echo "slug=official" >> "$GITHUB_OUTPUT"
             echo "name_suffix=官方上游版" >> "$GITHUB_OUTPUT"
-            echo "name_suffix_en=Official Upstream Edition" >> "$GITHUB_OUTPUT"
-            echo "branch_desc_cn=本分支为 DeepSeek Harness 官方上游构建版，仅引入 Linux 打包基础设施，功能与上游完全一致。" >> "$GITHUB_OUTPUT"
-            echo "branch_desc_en=This branch is the official upstream build of DeepSeek Harness, with only Linux packaging infrastructure added. Functionality is identical to upstream." >> "$GITHUB_OUTPUT"
           fi
 
       - name: 配置缓存目录
@@ -145,84 +139,235 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           SLUG="${{ steps.branch.outputs.slug }}"
           SUFFIX_CN="${{ steps.branch.outputs.name_suffix }}"
-          SUFFIX_EN="${{ steps.branch.outputs.name_suffix_en }}"
-          BRANCH_DESC_CN="${{ steps.branch.outputs.branch_desc_cn }}"
-          BRANCH_DESC_EN="${{ steps.branch.outputs.branch_desc_en }}"
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           TAG="v${VERSION}-linux-x64-${SLUG}"
           BRANCH="${{ env.BUILD_BRANCH }}"
 
-          NOTES=$(cat <<EOF
+          if [ "$BRANCH" = "linux-custom-titlebar" ]; then
+          NOTES=$(cat <<'NOTES_EOF'
           ## 中文
 
-          本 Release 由 GitHub Actions 在 **ubuntu-24.04** 云端自动构建，源码来自 \`${BRANCH}\` 分支。
+          本 Release 由 GitHub Actions 在 **ubuntu-24.04** 云端自动构建，源码来自 `linux-custom-titlebar` 分支。
 
           | 制品 | 类型 | 说明 |
           |------|------|------|
-          | \`deepseek-harness-${VERSION}-linux-x64.AppImage\` | AppImage | 免安装，添加执行权限即可运行 |
-          | \`deepseek-harness_${VERSION}_amd64.deb\` | deb | Debian / Ubuntu 系统安装包 |
-          | \`SHA256SUMS.${SLUG}-${VERSION}\` | 校验文件 | 下载后请核对哈希值，确保文件完整 |
+          | `deepseek-harness-__VERSION__-linux-x64.AppImage` | AppImage | 免安装，添加执行权限即可运行 |
+          | `deepseek-harness___VERSION___amd64.deb` | deb | Debian / Ubuntu 系统安装包 |
+          | `SHA256SUMS.custom-__VERSION__` | 校验文件 | 下载后请核对哈希值，确保文件完整 |
 
           ### 安装
 
-          \`\`\`bash
+          ```bash
           # AppImage
-          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
-          ./deepseek-harness-${VERSION}-linux-x64.AppImage
+          chmod +x deepseek-harness-__VERSION__-linux-x64.AppImage
+          ./deepseek-harness-__VERSION__-linux-x64.AppImage
 
           # deb
-          sudo dpkg -i deepseek-harness_${VERSION}_amd64.deb
-          \`\`\`
+          sudo dpkg -i deepseek-harness___VERSION___amd64.deb
+          ```
 
           ### 构建信息
 
-          - 版本号：${VERSION}
-          - 分支：\`${BRANCH}\`（${SUFFIX_CN}）
+          - 版本号：__VERSION__
+          - 分支：`linux-custom-titlebar`（定制优化版）
+          - 构建触发：代码推送自动构建并发布
           - 构建环境：GitHub Actions · ubuntu-24.04
 
           ### 分支说明
 
-          ${BRANCH_DESC_CN}
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 **Deepin v25 桌面端优化修改版**，适配并测试通过，其他 Linux 系统需自行测试。
+
+          > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-custom-titlebar`）
+
+          #### 定制功能
+
+          1. **自定义标题栏** —「应用 / 编辑」菜单内嵌进标题栏，与 Windows 版体验一致，节约屏幕高度
+          2. **去除原生菜单栏** — 抑制 GTK 菜单栏泄漏的调试项，界面更干净
+          3. **系统托盘** — 关闭后驻留托盘，托盘图标可快速「显示窗口 / 退出」
+          4. **关闭行为可配置** — 通用设置可选「隐藏到托盘（默认）」或「退出应用」
+          5. **桌面通知** — 后台任务、审核请求、模型提问等场景弹出原生通知，通知分类可精细开关
+          6. **自动更新** — 应用内「检查更新」指向 `linux-latest` 自动更新源，AppImage 支持自动下载安装
+
+          #### 自动构建说明
+
+          本分支每次推送代码即自动触发云端构建（README / docs 变更除外），构建成功后同时执行：
+
+          - 发布版本化 Release（本页面）
+          - 刷新 `linux-latest` 自动更新源
 
           ---
 
           ## English
 
-          This release is built automatically by GitHub Actions on a **ubuntu-24.04** runner from the \`${BRANCH}\` branch.
+          This release is built automatically by GitHub Actions on a **ubuntu-24.04** runner from the `linux-custom-titlebar` branch.
 
           | Artifact | Type | Description |
           |----------|------|-------------|
-          | \`deepseek-harness-${VERSION}-linux-x64.AppImage\` | AppImage | Portable — make executable and run |
-          | \`deepseek-harness_${VERSION}_amd64.deb\` | deb | Debian / Ubuntu system package |
-          | \`SHA256SUMS.${SLUG}-${VERSION}\` | Checksums | Verify file integrity after download |
+          | `deepseek-harness-__VERSION__-linux-x64.AppImage` | AppImage | Portable — make executable and run |
+          | `deepseek-harness___VERSION___amd64.deb` | deb | Debian / Ubuntu system package |
+          | `SHA256SUMS.custom-__VERSION__` | Checksums | Verify file integrity after download |
 
           ### Installation
 
-          \`\`\`bash
+          ```bash
           # AppImage
-          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
-          ./deepseek-harness-${VERSION}-linux-x64.AppImage
+          chmod +x deepseek-harness-__VERSION__-linux-x64.AppImage
+          ./deepseek-harness-__VERSION__-linux-x64.AppImage
 
           # deb
-          sudo dpkg -i deepseek-harness_${VERSION}_amd64.deb
-          \`\`\`
+          sudo dpkg -i deepseek-harness___VERSION___amd64.deb
+          ```
 
           ### Build Info
 
-          - Version: ${VERSION}
-          - Branch: \`${BRANCH}\` (${SUFFIX_EN})
+          - Version: __VERSION__
+          - Branch: `linux-custom-titlebar` (Custom Edition)
+          - Trigger: automatic on push
           - Runner: GitHub Actions · ubuntu-24.04
 
           ### Branch Description
 
-          ${BRANCH_DESC_EN}
+          An **optimized fork** of [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) for the **Deepin v25 desktop**, tested and verified. Other Linux distributions require self-testing.
+
+          > Repository: [yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness) (branch `linux-custom-titlebar`)
+
+          #### Custom Features
+
+          1. **Custom title bar** — App and Edit menu embedded in the title bar, matching the Windows experience and saving screen real estate
+          2. **No native menu bar** — Suppresses leftover GTK menu bar leak from debug builds for a cleaner look
+          3. **System tray** — App stays in the tray after closing; tray icon offers quick "Show Window / Quit"
+          4. **Configurable close behavior** — General settings toggle: "Hide to tray" (default) or "Quit application"
+          5. **Desktop notifications** — Native notifications for background tasks, approval requests, model questions, etc., with per-category toggle switches
+          6. **Auto-update** — In-app "Check for Updates" points to the `linux-latest` auto-update feed; AppImage auto-downloads and installs
+
+          #### Automatic Builds
+
+          Every push to this branch (except README / docs) triggers a cloud build, which upon success:
+
+          - Publishes a versioned Release (this page)
+          - Refreshes the `linux-latest` auto-update feed
 
           ---
 
           源码 / Source: https://github.com/deepseek-ai/deepseek-harness
           Fork: https://github.com/yaoyingkeji/deepseek-harness
-          EOF
+          NOTES_EOF
           )
+          NOTES="${NOTES//__VERSION__/$VERSION}"
+          else
+          NOTES=$(cat <<'NOTES_EOF'
+          ## 中文
+
+          本 Release 由 GitHub Actions 在 **ubuntu-24.04** 云端自动构建，源码来自 `linux-package-official` 分支。
+
+          | 制品 | 类型 | 说明 |
+          |------|------|------|
+          | `deepseek-harness-__VERSION__-linux-x64.AppImage` | AppImage | 免安装，添加执行权限即可运行 |
+          | `deepseek-harness___VERSION___amd64.deb` | deb | Debian / Ubuntu 系统安装包 |
+          | `SHA256SUMS.official-__VERSION__` | 校验文件 | 下载后请核对哈希值，确保文件完整 |
+
+          ### 安装
+
+          ```bash
+          # AppImage
+          chmod +x deepseek-harness-__VERSION__-linux-x64.AppImage
+          ./deepseek-harness-__VERSION__-linux-x64.AppImage
+
+          # deb
+          sudo dpkg -i deepseek-harness___VERSION___amd64.deb
+          ```
+
+          ### 构建信息
+
+          - 版本号：__VERSION__
+          - 分支：`linux-package-official`（官方上游版）
+          - 构建触发：代码推送自动构建并发布
+          - 构建环境：GitHub Actions · ubuntu-24.04
+
+          ### 分支说明
+
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游构建版**，功能与上游 `master` 完全一致。
+
+          > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-package-official`）
+
+          #### 与上游的区别
+
+          本分支**仅额外注入 Linux 打包基础设施**，不做任何 UI 或功能性修改：
+
+          - `linux-x64` 构建目标与 `electron-builder` 配置
+          - `package-linux.sh` 一键打包脚本
+          - 应用内「检查更新」指向 `linux-latest-official` 自动更新源
+
+          适合需要官方原版体验、且希望享受自动更新便利的用户。
+
+          #### 自动构建说明
+
+          本分支每次推送代码即自动触发云端构建（README / docs 变更除外），构建成功后同时执行：
+
+          - 发布版本化 Release（本页面）
+          - 刷新 `linux-latest-official` 自动更新源
+
+          ---
+
+          ## English
+
+          This release is built automatically by GitHub Actions on a **ubuntu-24.04** runner from the `linux-package-official` branch.
+
+          | Artifact | Type | Description |
+          |----------|------|-------------|
+          | `deepseek-harness-__VERSION__-linux-x64.AppImage` | AppImage | Portable — make executable and run |
+          | `deepseek-harness___VERSION___amd64.deb` | deb | Debian / Ubuntu system package |
+          | `SHA256SUMS.official-__VERSION__` | Checksums | Verify file integrity after download |
+
+          ### Installation
+
+          ```bash
+          # AppImage
+          chmod +x deepseek-harness-__VERSION__-linux-x64.AppImage
+          ./deepseek-harness-__VERSION__-linux-x64.AppImage
+
+          # deb
+          sudo dpkg -i deepseek-harness___VERSION___amd64.deb
+          ```
+
+          ### Build Info
+
+          - Version: __VERSION__
+          - Branch: `linux-package-official` (Official Upstream Edition)
+          - Trigger: automatic on push
+          - Runner: GitHub Actions · ubuntu-24.04
+
+          ### Branch Description
+
+          An **official upstream build** of [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness), functionally identical to upstream `master`.
+
+          > Repository: [yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness) (branch `linux-package-official`)
+
+          #### Differences from Upstream
+
+          This branch **only adds Linux packaging infrastructure** — no UI or functional changes:
+
+          - `linux-x64` build target and `electron-builder` configuration
+          - `package-linux.sh` one-shot packaging script
+          - In-app "Check for Updates" points to the `linux-latest-official` auto-update feed
+
+          Ideal for users who want the authentic upstream experience with the convenience of auto-update.
+
+          #### Automatic Builds
+
+          Every push to this branch (except README / docs) triggers a cloud build, which upon success:
+
+          - Publishes a versioned Release (this page)
+          - Refreshes the `linux-latest-official` auto-update feed
+
+          ---
+
+          源码 / Source: https://github.com/deepseek-ai/deepseek-harness
+          Fork: https://github.com/yaoyingkeji/deepseek-harness
+          NOTES_EOF
+          )
+          NOTES="${NOTES//__VERSION__/$VERSION}"
+          fi
 
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
           gh release create "$TAG" \
@@ -245,47 +390,50 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           LATEST_TAG="linux-latest"
-          LATEST_NOTES=$(cat <<EOF
+          LATEST_NOTES=$(cat <<'LATEST_EOF'
           ## 中文
 
-          此 Release 是 DeepSeek Harness Linux x64 **定制优化版**的自动更新源。每次云端构建成功后会刷新至此版本，供应用内「检查更新」使用。
+          此 Release 是 DeepSeek Harness Linux x64 **定制优化版** 的自动更新源。
 
-          - 版本：${VERSION}
-          - 构建环境：GitHub Actions · ubuntu-24.04
+          每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
 
-          ### 安装
+          | 属性 | 值 |
+          |------|-----|
+          | 当前版本 | __VERSION__ |
+          | 来源分支 | `linux-custom-titlebar` |
+          | 构建环境 | GitHub Actions · ubuntu-24.04 |
+          | 更新方式 | 应用内「通用设置 → 检查更新」，AppImage 自动下载安装 |
 
-          \`\`\`bash
-          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
-          ./deepseek-harness-${VERSION}-linux-x64.AppImage
-          \`\`\`
+          版本化独立构建见：[`v__VERSION__-linux-x64-custom`](https://github.com/yaoyingkeji/deepseek-harness/releases/tag/v__VERSION__-linux-x64-custom)
 
-          按版本发布的独立构建见：\`v${VERSION}-linux-x64-custom\`
+          仓库浏览与下载：[Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases)
 
           ---
 
           ## English
 
-          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Custom Edition. It is refreshed with every successful cloud build and consumed by the in-app update checker.
+          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Custom Edition.
 
-          - Version: ${VERSION}
-          - Runner: GitHub Actions · ubuntu-24.04
+          After every successful cloud build, GitHub Actions automatically refreshes this release to the latest version. The in-app "Check for Updates" reads artifact metadata from this page to detect new versions.
 
-          ### Installation
+          | Property | Value |
+          |----------|-------|
+          | Current Version | __VERSION__ |
+          | Source Branch | `linux-custom-titlebar` |
+          | Runner | GitHub Actions · ubuntu-24.04 |
+          | Update Method | In-app "General Settings → Check for Updates"; AppImage auto-downloads and installs |
 
-          \`\`\`bash
-          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
-          ./deepseek-harness-${VERSION}-linux-x64.AppImage
-          \`\`\`
+          Versioned build: [`v__VERSION__-linux-x64-custom`](https://github.com/yaoyingkeji/deepseek-harness/releases/tag/v__VERSION__-linux-x64-custom)
 
-          Versioned builds: \`v${VERSION}-linux-x64-custom\`
+          Browse & download: [Releases page](https://github.com/yaoyingkeji/deepseek-harness/releases)
 
           ---
 
           源码 / Source: https://github.com/deepseek-ai/deepseek-harness
           Fork: https://github.com/yaoyingkeji/deepseek-harness
-          EOF
+          LATEST_EOF
           )
+          LATEST_NOTES="${LATEST_NOTES//__VERSION__/$VERSION}"
           gh release delete "$LATEST_TAG" --yes --cleanup-tag 2>/dev/null || true
           gh release create "$LATEST_TAG" \
             "$ARTIFACTS"/*.AppImage \
@@ -307,46 +455,50 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           LATEST_TAG="linux-latest-official"
-          LATEST_NOTES=$(cat <<EOF
+          LATEST_NOTES=$(cat <<'LATEST_EOF'
           ## 中文
 
-          此 Release 是 DeepSeek Harness Linux x64 **官方构建版**的自动更新源。每次云端构建成功后会刷新至此版本，供应用内「检查更新」使用。
+          此 Release 是 DeepSeek Harness Linux x64 **官方构建版** 的自动更新源。
 
-          - 版本：${VERSION}
-          - 构建环境：GitHub Actions · ubuntu-24.04
+          每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
 
-          ### 安装
+          | 属性 | 值 |
+          |------|-----|
+          | 当前版本 | __VERSION__ |
+          | 来源分支 | `linux-package-official` |
+          | 构建环境 | GitHub Actions · ubuntu-24.04 |
+          | 更新方式 | 应用内「通用设置 → 检查更新」，AppImage 自动下载安装 |
 
-          \`\`\`bash
-          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
-          ./deepseek-harness-${VERSION}-linux-x64.AppImage
-          \`\`\`
+          版本化独立构建见：[`v__VERSION__-linux-x64-official`](https://github.com/yaoyingkeji/deepseek-harness/releases/tag/v__VERSION__-linux-x64-official)
 
-          按版本发布的独立构建见：\`v${VERSION}-linux-x64-official\`
+          仓库浏览与下载：[Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases)
 
           ---
 
           ## English
 
-          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Official Edition. It is refreshed with every successful cloud build and consumed by the in-app update checker.
+          This release is the **auto-update feed** for DeepSeek Harness Linux x64 Official Edition.
 
-          - Version: ${VERSION}
-          - Runner: GitHub Actions · ubuntu-24.04
+          After every successful cloud build, GitHub Actions automatically refreshes this release to the latest version. The in-app "Check for Updates" reads artifact metadata from this page to detect new versions.
 
-          ### Installation
+          | Property | Value |
+          |----------|-------|
+          | Current Version | __VERSION__ |
+          | Source Branch | `linux-package-official` |
+          | Runner | GitHub Actions · ubuntu-24.04 |
+          | Update Method | In-app "General Settings → Check for Updates"; AppImage auto-downloads and installs |
 
-          \`\`\`bash
-          chmod +x deepseek-harness-${VERSION}-linux-x64.AppImage
-          ./deepseek-harness-${VERSION}-linux-x64.AppImage
-          \`\`\`
+          Versioned build: [`v__VERSION__-linux-x64-official`](https://github.com/yaoyingkeji/deepseek-harness/releases/tag/v__VERSION__-linux-x64-official)
 
-          Versioned builds: \`v${VERSION}-linux-x64-official\`
+          Browse & download: [Releases page](https://github.com/yaoyingkeji/deepseek-harness/releases)
 
           ---
 
-          源码 / Source: https://github.com/yaoyingkeji/deepseek-harness
-          EOF
+          源码 / Source: https://github.com/deepseek-ai/deepseek-harness
+          Fork: https://github.com/yaoyingkeji/deepseek-harness
+          LATEST_EOF
           )
+          LATEST_NOTES="${LATEST_NOTES//__VERSION__/$VERSION}"
           gh release delete "$LATEST_TAG" --yes --cleanup-tag 2>/dev/null || true
           gh release create "$LATEST_TAG" \
             "$ARTIFACTS"/*.AppImage \
