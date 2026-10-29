@@ -101,8 +101,8 @@ function syncReadme(path) {
   if (upstream !== undefined) {
     content = replaceRow(content, '上游最新版本', `\`${upstream.slice(4)}\`（\`${upstream}\`）`)
     content = replaceRow(content, 'Upstream latest', `\`${upstream.slice(4)}\` (\`${upstream}\`)`)
-    content = replaceRow(content, '自动更新源', `✅ \`linux-latest\` → \`${customTag ?? version}\``)
-    content = replaceRow(content, 'Update feed', `✅ \`linux-latest\` → \`${customTag ?? version}\``)
+    content = replaceRow(content, '自动更新源', `✅ \`linux-latest\` → \`${customTag ?? version}\`<br>✅ \`linux-latest-official\` → \`${officialTag ?? version}\``)
+    content = replaceRow(content, 'Update feed', `✅ \`linux-latest\` → \`${customTag ?? version}\`<br>✅ \`linux-latest-official\` → \`${officialTag ?? version}\``)
   }
   writeFileSync(path, content)
   console.log(`updated ${path}`)

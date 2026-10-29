@@ -38,7 +38,10 @@ import {
 /** Environment variable overriding the Linux auto-update feed base URL. */
 export const DESKTOP_LINUX_UPDATE_ENV = 'DSH_DESKTOP_LINUX_UPDATE_URL'
 
-/** Chinese branch release notes embedded in the Linux update feed metadata. */
+/** Environment variable overriding the release notes embedded in Linux update metadata. */
+export const DESKTOP_LINUX_RELEASE_NOTES_ENV = 'DSH_DESKTOP_LINUX_RELEASE_NOTES'
+
+/** Default release notes embedded in the Linux update feed metadata. */
 export const LINUX_UPDATE_RELEASE_NOTES = `linux-custom-titlebar 分支更新
 
 基于官方进行分支优化修改，适配 Deepin v25 系统并测试通过，其它系统需自行测试。
@@ -156,7 +159,7 @@ export function createElectronBuilderConfig(
     ...(update === undefined ? {} : {
       releaseInfo: {
         releaseName: `DeepSeek Harness ${productVersion}`,
-        releaseNotes: LINUX_UPDATE_RELEASE_NOTES,
+        releaseNotes: env[DESKTOP_LINUX_RELEASE_NOTES_ENV]?.trim() || LINUX_UPDATE_RELEASE_NOTES,
       },
     }),
     // Unsigned builds carry their own suffix so a shared file can never pass for a release artifact.

@@ -24,9 +24,9 @@ Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://de
 |------|------|
 | **上游最新版本** | `v0.2.2-alpha.2`（`dsh-v0.2.2-alpha.2`） |
 | **上游同步** | ✅ 已同步，0 commits behind |
-| **定制版 Linux 发行包** | ✅ `v0.2.2-alpha.2-linux-x64-custom` |
-| **官方版 Linux 发行包** | ✅ `v0.2.2-alpha.2-linux-x64-official` |
-| **自动更新源** | ✅ `linux-latest` → `v0.2.2-alpha.2-linux-x64-custom` |
+| **定制版 Linux 发行包**（`linux-custom-titlebar`） | ✅ `v0.2.2-alpha.2-linux-x64-custom` |
+| **官方版 Linux 发行包**（`linux-package-official`） | ✅ `v0.2.2-alpha.2-linux-x64-official` |
+| **自动更新源** | ✅ `linux-latest` → `v0.2.2-alpha.2-linux-x64-custom`<br>✅ `linux-latest-official` → `v0.2.2-alpha.2-linux-x64-official` |
 
 > 本表在每次云端构建发布后由 GitHub Actions 自动刷新，无需手工维护。查看 [Actions 面板](https://github.com/yaoyingkeji/deepseek-harness/actions/workflows/384236203)。
 
@@ -65,7 +65,11 @@ sudo dpkg -i deepseek-harness_*_amd64.deb
 
 ### `linux-package-official` — 官方上游版
 
-与上游 `master` 功能完全一致，**仅额外注入 Linux 打包基础设施**（`linux-x64` 构建目标、`electron-builder` 配置、`package-linux.sh` 脚本），不做任何 UI 或功能性修改。适合需要官方原版体验的用户。
+与上游 `master` 功能完全一致，**仅额外注入 Linux 打包基础设施**（`linux-x64` 构建目标、`electron-builder` 配置、`package-linux.sh` 脚本），不做任何 UI 或功能性修改。应用内「检查更新」指向 `linux-latest-official` 自动更新源。适合需要官方原版体验的用户。
+
+#### 下载安装
+
+前往 [Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases)，查找 `v*-linux-x64-official` 标签下载。
 
 ### `master` — 纯上游镜像
 

@@ -103,6 +103,13 @@ jobs:
       - name: 构建官方 workspace
         run: pnpm run build:official
 
+      - name: 配置 Linux 更新源与发布说明
+        id: linux-update
+        if: env.BUILD_BRANCH == 'linux-package-official'
+        run: |
+          echo "DSH_DESKTOP_LINUX_UPDATE_URL=https://github.com/yaoyingkeji/deepseek-harness/releases/download/linux-latest-official/" >> "$GITHUB_ENV"
+          echo "DSH_DESKTOP_LINUX_RELEASE_NOTES=linux-package-official 分支构建 / Official upstream build" >> "$GITHUB_ENV"
+
       - name: 打包 Linux AppImage + deb
         run: bash package-linux.sh
 
@@ -266,7 +273,7 @@ jobs:
 
           ### 分支说明
 
-          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游构建版**，功能与上游 `master` 完全一致。
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游版**，功能与上游 `master` 完全一致。
 
           > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-package-official`）
 
@@ -494,7 +501,7 @@ jobs:
 
           ### 分支说明
 
-          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游构建版**，功能与上游 `master` 完全一致。
+          基于 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的**官方上游版**，功能与上游 `master` 完全一致。
 
           > 仓库地址：[yaoyingkeji/deepseek-harness](https://github.com/yaoyingkeji/deepseek-harness)（分支 `linux-package-official`）
 
@@ -508,7 +515,7 @@ jobs:
 
           ### 自动更新源
 
-          此 Release 是 DeepSeek Harness Linux x64 **官方构建版** 的自动更新源。每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
+          此 Release 是 DeepSeek Harness Linux x64 **官方上游版** 的自动更新源。每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
 
           | 属性 | 值 |
           |------|-----|
