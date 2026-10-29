@@ -631,7 +631,7 @@ export class GoalService extends TypertRemoteService {
         : (notification.goal?.objective ?? (change as { goal?: { objective?: string } }).goal?.objective)
       this.ctx.emit('goal/completed-or-blocked', {
         sessionId: agent.session.id,
-        operation: change.operation,
+        operation: change.operation as 'complete' | 'block',
         objective,
       })
     }
