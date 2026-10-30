@@ -947,6 +947,10 @@ async function main(): Promise<void> {
       throw new Error('desktop notify: sessionId must be a string')
     }
     if (!desktopSettings.notifications[category]) return
+    // Tray flash fires regardless of focus: the icon blink is the visual cue
+    // that something happened while the user was away from the notification panel.
+    // It is started here, before any focus or session filter can return early.
+    if (desktopSettings.notifications.trayFlash) tray?.flash()
     // Focus mode: when "focused" is off (the default), the window being
     // focused means the in-app panel already surfaces the event, so the
     // native notification waits until the window loses focus. Turning the
@@ -974,7 +978,6 @@ async function main(): Promise<void> {
         }
       })
       notification.show()
-      if (desktopSettings.notifications.trayFlash) tray?.flash()
     } catch (error) {
       console.warn('desktop notification: unavailable', error)
     }
@@ -1344,6 +1347,9 @@ async function main(): Promise<void> {
     browserGuests.bind(window, (guest, name) => shortcuts.attachGuest(window, guest, name))
     shortcuts.attach(window)
     window.on('focus', automaticCheck)
+    // The tray stops flashing once the user focuses the window: the blink
+    // served its purpose of drawing attention, and a steady icon is restored.
+    window.on('focus', () => { tray?.stopFlash() })
     // Closing hides by default: the page and the Host keep running, and the next show resumes the same document.
     // The General settings close-behavior option can turn the close button into a real quit instead.
     window.on('close', (event) => {

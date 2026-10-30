@@ -14,6 +14,8 @@ import type {} from '@deepseek-ai/dsh-api-remote-access/client'
 // Type-only: pulls the ctx.remote merge and its fixed Host facts.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/remote-events'
+// Type-only: pulls the ctx.sessions service merge (current-session tracking).
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-subagent'
 import type {} from '@deepseek-ai/dsh-goal'
 // Type-only: pulls the connection/remote-requested Cordis event declaration.
@@ -82,7 +84,7 @@ const NS = 'settings'
  * ui-settings' apply, whose activation order relative to this one is NOT
  * constrained; registrations depend on their slots through `slots.inject()`.
  */
-export const inject = ['slots', 'locale', 'connection', 'remote', 'remote.settings', 'configForms', 'shortcuts', 'modules', 'remoteAccess']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'remote.settings', 'configForms', 'shortcuts', 'modules', 'remoteAccess', 'sessions']
 
 /**
  * Register the `settings` dictionaries, the chrome content, and the General
@@ -117,11 +119,32 @@ export function apply(ctx: ClientContext): void {
       updates?: DesktopUpdateBridge
       closeBehavior?: DesktopCloseBehaviorBridge
       notifications?: DesktopNotificationsBridge
+      setCurrentSession?: (sessionId: string | undefined) => Promise<void>
       onNotifyAction?: (listener: (sessionId: string | undefined) => void) => () => void
     }
   }).dshDesktop
   const desktopUpdate = new DesktopUpdateSource(carrier?.protocolVersion === 1 ? carrier.updates : undefined)
   ctx.effect(() => () => { desktopUpdate.dispose() }, 'ui-settings-general: desktop update carrier')
+
+  // Track which session the UI is currently viewing so the shell's
+  // non-current-session notification filter can suppress background-session
+  // notifications. The session list's mainView-retained row is the active tab,
+  // matching the layout's DocumentTitle selection.
+  if (carrier?.protocolVersion === 1 && carrier.setCurrentSession !== undefined) {
+    type SessionListLike = { getSnapshot(): { byId: Record<string, { retainedBy: { mainView?: number } }> }, subscribe(listener: () => void): () => void }
+    const sessions = ctx.get('sessions') as { list: SessionListLike } | undefined
+    if (sessions !== undefined) {
+      const sync = (): void => {
+        const snapshot = sessions.list.getSnapshot()
+        const currentId = Object.entries(snapshot.byId)
+          .find(([, session]) => (session.retainedBy.mainView ?? 0) > 0)?.[0]
+        void carrier.setCurrentSession?.(currentId)
+      }
+      sync()
+      const stop = sessions.list.subscribe(() => { sync() })
+      ctx.effect(() => () => { stop() }, 'ui-settings-general: current-session sync')
+    }
+  }
 
   // Notification triggers for categories without a feature-owned hook: the
   // model needing credentials or a sign-in, the remote-connection request the

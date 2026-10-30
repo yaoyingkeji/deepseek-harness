@@ -18,16 +18,12 @@ export interface DesktopTrayOptions {
 export class DesktopTray {
   private tray: Tray | undefined
   private readonly normalIcon: NativeImage
-  private readonly blankIcon: NativeImage
   private flashTimer: ReturnType<typeof setInterval> | undefined
 
   /** @param options - Icon path, locale reader, and the open and quit actions. */
   constructor(private readonly options: DesktopTrayOptions) {
     const normalIcon = nativeImage.createFromPath(options.iconPath)
     this.normalIcon = normalIcon
-    const { width, height } = normalIcon.getSize()
-    this.blankIcon = nativeImage.createFromBuffer(
-      Buffer.alloc(width * height * 4), { width, height })
     const tray = new Tray(normalIcon)
     this.tray = tray
     tray.on('click', () => { options.open() })
@@ -48,17 +44,16 @@ export class DesktopTray {
   }
 
   /**
-   * Flash the tray icon by alternating between the normal icon and a
-   * blank one every 500 ms — analogous to QQ / WeChat on Linux. A second
-   * call while already flashing is a no-op; the effect stops automatically
-   * when the window is opened.
+   * Flash the tray icon by toggling between visible and hidden every 500 ms,
+   * analogous to QQ / WeChat on Linux. A second call while already flashing
+   * is a no-op; the effect stops automatically when the window is opened.
    */
   flash(): void {
     if (this.flashTimer !== undefined || this.tray === undefined) return
-    const { tray, normalIcon, blankIcon } = this
+    const { tray, normalIcon } = this
     let showNormal = true
     this.flashTimer = setInterval(() => {
-      tray.setImage(showNormal ? blankIcon : normalIcon)
+      tray.setImage(showNormal ? normalIcon : nativeImage.createEmpty())
       showNormal = !showNormal
     }, 500)
   }
