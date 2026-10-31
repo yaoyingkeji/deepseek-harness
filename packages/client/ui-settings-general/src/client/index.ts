@@ -185,8 +185,12 @@ export function apply(ctx: ClientContext): void {
     const value = info as { provider?: string; id?: string }
     const providerZh = value.provider ?? '子代理'
     const providerEn = value.provider ?? 'Subagent'
+    // Subagent id is the child session id, not the parent the user is viewing,
+    // so it must not be passed as sessionId — otherwise it never matches
+    // currentSessionId and the non-current-session / focus filters let it
+    // through even when they should not. Treat it as a session-less notice.
     notifyDesktop('subagent', '子代理结束', providerZh + ' 已完成',
-      'Subagent finished', providerEn + ' finished', value.id)
+      'Subagent finished', providerEn + ' finished')
   })
   ctx.remote.$on('deepseek-account/model-sign-in-required', () => {
     notifyDesktop('credential', '凭证需要', '模型需要登录，请提供凭证',

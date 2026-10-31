@@ -30,11 +30,20 @@ const kit = {
 /** Bridge over an in-memory settings snapshot with call spies. */
 function notificationsBridge(initial: DesktopNotificationSettings) {
   let current = { ...initial }
-  const set = vi.fn(async (category: keyof DesktopNotificationSettings, enabled: boolean) => {
-    current = { ...current, [category]: enabled }
+  const set = vi.fn(async (category: string, enabled: boolean) => {
+    if (category.startsWith('sticky:')) {
+      const cat = category.slice(7) as keyof DesktopNotificationSettings['sticky']
+      current = { ...current, sticky: { ...current.sticky, [cat]: enabled } }
+    } else {
+      current = { ...current, [category]: enabled }
+    }
+  })
+  const reset = vi.fn(async (): Promise<DesktopNotificationSettings> => {
+    current = { ...initial }
+    return { ...current }
   })
   const get = vi.fn(async (): Promise<DesktopNotificationSettings> => ({ ...current }))
-  const bridge: DesktopNotificationsBridge = { get, set }
+  const bridge: DesktopNotificationsBridge = { get, set, reset }
   return { bridge, read: () => current }
 }
 
@@ -42,6 +51,7 @@ const DEFAULTS: DesktopNotificationSettings = {
   approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
   plugin: false, schedule: false, goal: false, nonCurrentSession: false, trayFlash: false,
   focused: false,
+  sticky: { approval: false, question: false, job: false, subagent: false, credential: false, remote: false, session: false, plugin: false, schedule: false, goal: false },
 }
 
 afterEach(() => { cleanup(); vi.unstubAllEnvs() })
@@ -52,7 +62,8 @@ describe('DesktopNotificationsRow', () => {
     const injected: DesktopNotificationsRowInjected = { bridge }
     const view = render(<DesktopNotificationsRow {...kit} t={t} {...injected} />)
     const switches = screen.getAllByRole('switch')
-    expect(switches).toHaveLength(13)
+    // 10 categories × 2 (enable + sticky) + focused + nonCurrentSession + trayFlash = 23
+    expect(switches).toHaveLength(23)
     // Approval/question/job default on; subagent/credential/remote/session default off.
     expect(screen.getByRole('switch', { name: 'Approval requests' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.getByRole('switch', { name: 'Subagent finished' }).getAttribute('aria-checked')).toBe('false')
@@ -77,7 +88,7 @@ describe('DesktopNotificationsRow', () => {
     // and tray-flash switches are modes, not categories).
     fireEvent.click(screen.getByRole('button', { name: 'Enable all' }))
     await waitFor(() => { expect(screen.getByRole('button', { name: 'Disable all' })).toBeTruthy() })
-    const modeLabels = new Set(['Show notifications while focused', 'Non-current session', 'Tray icon flash'])
+    const modeLabels = new Set(['Show notifications while focused', 'Non-current session', 'Tray icon flash', 'Click to dismiss'])
     const categorySwitches = screen.getAllByRole('switch').filter(sw => !modeLabels.has(sw.getAttribute('aria-label') ?? ''))
     expect(categorySwitches).toHaveLength(10)
     expect(categorySwitches.every(sw => sw.getAttribute('aria-checked') === 'true')).toBe(true)

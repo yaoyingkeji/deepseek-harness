@@ -33,7 +33,12 @@ export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'sub
  * for non-current sessions; `trayFlash` (true by default) makes the tray icon
  * flash when a notification arrives.
  */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean; nonCurrentSession: boolean; trayFlash: boolean }
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & {
+  focused: boolean
+  nonCurrentSession: boolean
+  trayFlash: boolean
+  sticky: Record<DesktopNotificationCategory, boolean>
+}
 
 /**
  * Categories that can flood the user with notices and are therefore off by
@@ -56,6 +61,18 @@ export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {
   focused: false,
   nonCurrentSession: true,
   trayFlash: true,
+  sticky: {
+    approval: false,
+    question: false,
+    job: false,
+    subagent: false,
+    credential: true,
+    remote: true,
+    session: false,
+    plugin: false,
+    schedule: false,
+    goal: false,
+  },
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -127,6 +144,21 @@ export function readDesktopSettings(userData: string): DesktopSettings {
       throw new Error('notifications.trayFlash must be true or false')
     }
     notifications.trayFlash = trayFlash ?? DESKTOP_NOTIFICATION_DEFAULTS.trayFlash
+    // Per-category sticky (timeoutType 'never'): default off except for
+    // credential and remote, where missing the popup could block the model.
+    const stickyRaw = value.notifications?.sticky
+    const sticky = { ...DESKTOP_NOTIFICATION_DEFAULTS.sticky }
+    if (stickyRaw !== undefined) {
+      if (!record(stickyRaw)) throw new Error('notifications.sticky must be an object')
+      for (const category of ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal'] as const) {
+        const v = stickyRaw[category]
+        if (v !== undefined && typeof v !== 'boolean') {
+          throw new Error(`notifications.sticky.${category} must be true or false`)
+        }
+        sticky[category] = v ?? DESKTOP_NOTIFICATION_DEFAULTS.sticky[category]
+      }
+    }
+    notifications.sticky = sticky
     return {
       updates: { allowTestAuthPopupWindow: allow ?? false },
       window: { closeBehavior: closeBehavior ?? 'hide' },

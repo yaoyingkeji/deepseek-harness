@@ -75,6 +75,7 @@ function createProductApi(): DshDesktopProductApi {
     notifications: {
       get: () => ipcRenderer.invoke(DESKTOP_IPC.notificationsGet) as Promise<DesktopNotificationSettings>,
       set: (category, enabled) => ipcRenderer.invoke(DESKTOP_IPC.notificationsSet, category, enabled) as Promise<void>,
+      reset: () => ipcRenderer.invoke(DESKTOP_IPC.notificationsReset) as Promise<DesktopNotificationSettings>,
     },
     setCurrentSession: (sessionId) => ipcRenderer.invoke(DESKTOP_IPC.setCurrentSession, sessionId) as Promise<void>,
     onNotifyAction(listener) {

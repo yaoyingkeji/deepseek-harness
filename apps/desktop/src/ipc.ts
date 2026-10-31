@@ -36,6 +36,7 @@ export const DESKTOP_IPC = {
   windowCloseBehaviorSet: 'dsh-desktop:window-close-behavior-set',
   notificationsGet: 'dsh-desktop:notifications-get',
   notificationsSet: 'dsh-desktop:notifications-set',
+  notificationsReset: 'dsh-desktop:notifications-reset',
   notify: 'dsh-desktop:notify',
   notifyAction: 'dsh-desktop:notify-action',
   setCurrentSession: 'dsh-desktop:set-current-session',
@@ -144,7 +145,8 @@ export interface DshDesktopProductApi {
   notify(input: DesktopNotifyInput): Promise<void>
   readonly notifications: {
     get(): Promise<DesktopNotificationSettings>
-    set(category: DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash', enabled: boolean): Promise<void>
+    set(category: DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash' | `sticky:${DesktopNotificationCategory}`, enabled: boolean): Promise<void>
+    reset(): Promise<DesktopNotificationSettings>
   }
   /**
    * Track which session is currently active in the UI, so non-current-session

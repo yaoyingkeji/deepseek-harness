@@ -57,7 +57,7 @@ import { DesktopMandatoryUpdatePolicy, resolveDesktopPolicyConfig, type DesktopP
 import { desktopClientMetadata, desktopClientVersion } from './client-metadata.ts'
 import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
-import { readDesktopSettings, writeDesktopSettings, type DesktopCloseBehavior, type DesktopNotificationCategory, type DesktopNotificationSettings } from './settings.ts'
+import { readDesktopSettings, writeDesktopSettings, DESKTOP_NOTIFICATION_DEFAULTS, type DesktopCloseBehavior, type DesktopNotificationCategory, type DesktopNotificationSettings } from './settings.ts'
 import { readDesktopLocaleCache, writeDesktopLocaleCache } from './locale-cache.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
@@ -985,13 +985,21 @@ async function main(): Promise<void> {
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
       : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
     try {
-      const notification = new Notification({ title, body, icon: iconPath, silent: false })
+      const sticky = desktopSettings.notifications.sticky[category] ?? false
+      const notification = new Notification({ title, body, icon: iconPath, silent: false, timeoutType: sticky ? 'never' : 'default' })
       // Clicking the notification focuses the window and tells the web UI
       // which session's approval or question panel to surface.
       notification.on('click', () => {
-        focusPrimaryWindow()
+        // Directly show and focus the window, bypassing focusPrimaryWindow's
+        // enteredWorkspace guard: a notification click must always reveal the
+        // window so the user can act on the pending approval or question.
         if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
+          if (mainWindow.isMinimized()) mainWindow.restore()
+          mainWindow.show()
+          mainWindow.focus()
           mainWindow.webContents.send(DESKTOP_IPC.notifyAction, sessionId)
+        } else {
+          focusPrimaryWindow()
         }
       })
       notification.show()
@@ -1008,19 +1016,47 @@ async function main(): Promise<void> {
   ipcMain.handle(DESKTOP_IPC.notificationsSet, (event, category: unknown, enabled: unknown) => {
     assertProductSender(event)
     const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal', 'focused', 'nonCurrentSession', 'trayFlash'] as const
-    if (!categories.includes(category as typeof categories[number])) {
+    const stickyCategories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal'] as const
+    // Accept sticky sub-keys as `sticky:<category>` so the same IPC handles them.
+    const isStickyKey = typeof category === 'string' && category.startsWith('sticky:')
+    const baseCategory = isStickyKey ? (category as string).slice(7) : category
+    if (!isStickyKey && !categories.includes(baseCategory as typeof categories[number])) {
       throw new Error('desktop notifications: unknown category')
     }
+    if (isStickyKey && !stickyCategories.includes(baseCategory as typeof stickyCategories[number])) {
+      throw new Error('desktop notifications: unknown sticky category')
+    }
     if (typeof enabled !== 'boolean') throw new Error('desktop notifications: enabled must be true or false')
-    const typedCategory = category as DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash'
+    if (isStickyKey) {
+      const cat = baseCategory as DesktopNotificationCategory
+      desktopSettings = {
+        ...desktopSettings,
+        notifications: {
+          ...desktopSettings.notifications,
+          sticky: { ...desktopSettings.notifications.sticky, [cat]: enabled },
+        },
+      }
+    } else {
+      const typedCategory = baseCategory as DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash'
+      desktopSettings = {
+        ...desktopSettings,
+        notifications: { ...desktopSettings.notifications, [typedCategory]: enabled },
+      }
+      // Turning the tray-flash switch off while blinking stops the blink
+      // immediately so the icon does not keep pulsing against the user's wish.
+      if (typedCategory === 'trayFlash' && !enabled) tray?.stopFlash()
+    }
+    writeDesktopSettings(app.getPath('userData'), desktopSettings)
+  })
+  ipcMain.handle(DESKTOP_IPC.notificationsReset, (event) => {
+    assertProductSender(event)
+    tray?.stopFlash()
     desktopSettings = {
       ...desktopSettings,
-      notifications: { ...desktopSettings.notifications, [typedCategory]: enabled },
+      notifications: { ...DESKTOP_NOTIFICATION_DEFAULTS },
     }
-    // Turning the tray-flash switch off while blinking stops the blink
-    // immediately so the icon does not keep pulsing against the user's wish.
-    if (typedCategory === 'trayFlash' && !enabled) tray?.stopFlash()
     writeDesktopSettings(app.getPath('userData'), desktopSettings)
+    return desktopSettings.notifications satisfies DesktopNotificationSettings
   })
 
   // Track which session the UI is currently viewing so non-current-session
@@ -1031,6 +1067,14 @@ async function main(): Promise<void> {
       throw new Error('desktop set-current-session: sessionId must be a string or undefined')
     }
     currentSessionId = sessionId
+    // If the user switched to the session that owned the most recent unread
+    // notification, the blink has served its purpose: stop flashing and clear
+    // the unread marker so the tray icon stays steady.
+    if (unreadPending && sessionId !== undefined && sessionId === unreadSessionId) {
+      tray?.stopFlash()
+      unreadPending = false
+      unreadSessionId = undefined
+    }
   })
 
   let promptOperation: Promise<void> | undefined

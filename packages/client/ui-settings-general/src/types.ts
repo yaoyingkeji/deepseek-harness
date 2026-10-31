@@ -43,15 +43,21 @@ export interface DesktopCloseBehaviorBridge {
 export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session' | 'plugin' | 'schedule' | 'goal'
 
 /** Notification switch keys: the seven categories plus the focus-mode preference. */
-export type DesktopNotificationSwitchKey = DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash'
+export type DesktopNotificationSwitchKey = DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash' | `sticky:${DesktopNotificationCategory}`
 
 /**
  * Resolved notification category switches plus the focus-mode preference.
  * Category keys select which event kinds notify; `focused` decides whether
  * notifications also appear while the window has focus (false = only while
- * unfocused; true = always).
+ * unfocused; true = always). `sticky` records per-category whether the
+ * notification stays open until the user dismisses it (timeoutType 'never').
  */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean; nonCurrentSession: boolean; trayFlash: boolean }
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & {
+  focused: boolean
+  nonCurrentSession: boolean
+  trayFlash: boolean
+  sticky: Record<DesktopNotificationCategory, boolean>
+}
 
 /** Categories off by default because they can flood the user with notices. */
 export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session', 'plugin', 'schedule']
@@ -60,6 +66,7 @@ export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotifica
 export interface DesktopNotificationsBridge {
   get(): Promise<DesktopNotificationSettings>
   set(category: DesktopNotificationSwitchKey, enabled: boolean): Promise<void>
+  reset(): Promise<DesktopNotificationSettings>
 }
 
 /** Shared carrier status for the account row and collapsed sidebar badge. */

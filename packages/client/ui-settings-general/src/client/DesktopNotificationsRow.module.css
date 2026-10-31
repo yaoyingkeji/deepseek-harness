@@ -50,6 +50,12 @@
   outline-offset: -2px;
 }
 
+.toggleGroup {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -94,4 +100,23 @@
   color: var(--dsw-alias-label-secondary);
   font-size: 11px;
   line-height: 16px;
+}
+
+.switchGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+.stickyToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stickyLabel {
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+  white-space: nowrap;
 }

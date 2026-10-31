@@ -21,6 +21,13 @@ const CATEGORIES: readonly DesktopNotificationCategory[] = [
   'approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal',
 ]
 
+/** Default settings shared with the Desktop shell (apps/desktop/src/settings.ts). */
+const DEFAULT_SETTINGS: DesktopNotificationSettings = {
+  approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
+  plugin: true, schedule: true, goal: true, focused: false, nonCurrentSession: true, trayFlash: true,
+  sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
+}
+
 /** Focus-mode switch key: whether notifications also appear while focused. */
 const FOCUSED_KEY = 'focused' as const
 
@@ -44,6 +51,7 @@ export function DesktopNotificationsRow({ bridge, t }:
     approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
     plugin: true, schedule: true, goal: true,
     focused: false, nonCurrentSession: true, trayFlash: true,
+    sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
   })
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -75,9 +83,21 @@ export function DesktopNotificationsRow({ bridge, t }:
     setFailed(false)
     setBusy(true)
     const previous = settings
-    const next = Object.fromEntries(CATEGORIES.map(category => [category, !allOn])) as DesktopNotificationSettings
+    const toggled = Object.fromEntries(CATEGORIES.map(category => [category, !allOn])) as Partial<DesktopNotificationSettings>
+    const next = { ...settings, ...toggled } as DesktopNotificationSettings
     setSettings(next)
     Promise.all(CATEGORIES.map(category => bridge.set(category, !allOn))).catch(() => {
+      setFailed(true)
+      setSettings(previous)
+    }).finally(() => { setBusy(false) })
+  }
+  const restoreDefaults = (): void => {
+    touched.current = true
+    setFailed(false)
+    setBusy(true)
+    const previous = settings
+    setSettings(DEFAULT_SETTINGS)
+    void bridge.reset().then((value) => { if (!touched.current) return; setSettings(value) }).catch(() => {
       setFailed(true)
       setSettings(previous)
     }).finally(() => { setBusy(false) })
@@ -89,10 +109,16 @@ export function DesktopNotificationsRow({ bridge, t }:
           <div className={css.title}>{t('notifications.title')}</div>
           <div className={css.description}>{t('notifications.description')}</div>
         </div>
-        <button type="button" className={css.allToggle} disabled={busy}
-          onClick={() => { void applyAll() }}>
-          {allOn ? t('notifications.allOff') : t('notifications.allOn')}
-        </button>
+        <div className={css.toggleGroup}>
+          <button type="button" className={css.allToggle} disabled={busy}
+            onClick={() => { void applyAll() }}>
+            {allOn ? t('notifications.allOff') : t('notifications.allOn')}
+          </button>
+          <button type="button" className={css.allToggle} disabled={busy}
+            onClick={() => { void restoreDefaults() }}>
+            {t('notifications.restoreDefaults')}
+          </button>
+        </div>
       </div>
       {failed && <div role="alert">{t('notifications.error')}</div>}
     </div>
@@ -138,8 +164,14 @@ export function DesktopNotificationsRow({ bridge, t }:
             <div className={css.warning}>{t('notifications.floodWarning')}</div>
           )}
         </div>
-        <Switch checked={settings[category]} disabled={busy} label={t(`notifications.${category}`)}
-          onChange={(next) => { setEnabled(category, next) }} />
+        <div className={css.switchGroup}>
+          <Switch checked={settings[category]} disabled={busy} label={t(`notifications.${category}`)}
+            onChange={(next) => { setEnabled(category, next) }} />
+          <label className={css.stickyToggle} title={t('notifications.stickyHint')}>
+            <Switch checked={settings.sticky[category]} disabled={busy} label={t('notifications.sticky')}
+              onChange={(next) => { setEnabled(`sticky:${category}` as `sticky:${typeof category}`, next) }} />
+          </label>
+        </div>
       </div>
     ))}
   </div>
