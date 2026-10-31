@@ -961,24 +961,26 @@ async function main(): Promise<void> {
       && sessionId !== undefined && currentSessionId !== undefined
       && sessionId !== currentSessionId
     if (backgroundSession) return
-    // Focus mode: when "focused" is off (the default), notice for the session
-    // the user is already looking at is redundant — the in-app panel shows it.
-    // A background session, or a notice without a session (credential /
-    // remote-access), is not redundant while focused, so it still surfaces.
-    // Turning the switch on notifies regardless of focus.
+    // The tray carries the unread state like QQ / WeChat: any notification
+    // that survives the category and session filters starts the blink and
+    // remembers its target session so a tray click jumps straight to that
+    // conversation (or the settings surface for session-less notices).
+    // This runs before the focus-redundancy check so the tray still blinks
+    // for the visible session while the window is focused.
+    unreadPending = true
+    if (sessionId !== undefined) unreadSessionId = sessionId
+    if (desktopSettings.notifications.trayFlash) tray?.flash()
+    // Focus mode: when "focused" is off (the default), the native popup for
+    // the session the user is already looking at is redundant — the in-app
+    // panel shows it. A background session, or a notice without a session
+    // (credential / remote-access), is not redundant while focused, so it
+    // still surfaces. Turning the switch on notifies regardless of focus.
     const forVisibleSession = sessionId === undefined || currentSessionId === undefined
       || sessionId === currentSessionId
     const focusedOnVisible = !desktopSettings.notifications.focused
       && forVisibleSession
       && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()
     if (focusedOnVisible) return
-    // The tray carries the unread state: it remembers the newest unread
-    // session so a tray click jumps straight to that conversation (or the
-    // settings surface for session-less notices) instead of just raising the
-    // window. The blink itself follows the trayFlash switch.
-    unreadPending = true
-    if (sessionId !== undefined) unreadSessionId = sessionId
-    if (desktopSettings.notifications.trayFlash) tray?.flash()
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
       : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
@@ -1015,6 +1017,9 @@ async function main(): Promise<void> {
       ...desktopSettings,
       notifications: { ...desktopSettings.notifications, [typedCategory]: enabled },
     }
+    // Turning the tray-flash switch off while blinking stops the blink
+    // immediately so the icon does not keep pulsing against the user's wish.
+    if (typedCategory === 'trayFlash' && !enabled) tray?.stopFlash()
     writeDesktopSettings(app.getPath('userData'), desktopSettings)
   })
 

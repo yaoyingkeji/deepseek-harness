@@ -4,21 +4,22 @@ import { Menu, nativeImage, Tray, type NativeImage } from 'electron'
 import type { DesktopLocale } from './locale.ts'
 
 /**
- * Build a translucent copy of an icon so a blink alternates between two real
- * bitmaps instead of an empty one: some tray implementations (DDE / Ayatana)
- * render an empty image as a placeholder glyph rather than nothing.
+ * Build a near-transparent copy of an icon so a blink alternates between two
+ * real bitmaps instead of an empty one: some tray implementations (DDE /
+ * Ayatana) render an empty image as a placeholder glyph rather than nothing.
+ * The dimmed frame keeps a faint outline (alpha ≈ 0.08) so the icon visibly
+ * pulses between full and near-empty, mimicking QQ / WeChat.
  * @param icon - Source icon.
- * @param alpha - Fraction of the original alpha kept (0..1).
  * @returns a same-size icon with reduced opacity, or the source icon when the
  * bitmap cannot be read.
  */
-function dimmed(icon: NativeImage, alpha: number): NativeImage {
+function dimmed(icon: NativeImage): NativeImage {
   const { width, height } = icon.getSize()
   if (width < 1 || height < 1) return icon
   const bitmap = Buffer.from(icon.toBitmap())
   // toBitmap() yields platform-dependent 32-bit BGRA; the fourth byte is alpha.
   for (let i = 3; i < bitmap.length; i += 4) {
-    bitmap[i] = Math.round((bitmap[i] ?? 0) * alpha)
+    bitmap[i] = Math.round((bitmap[i] ?? 0) * 0.08)
   }
   const faded = nativeImage.createFromBitmap(bitmap, { width, height })
   return faded.isEmpty() ? icon : faded
@@ -46,7 +47,7 @@ export class DesktopTray {
   constructor(private readonly options: DesktopTrayOptions) {
     const normalIcon = nativeImage.createFromPath(options.iconPath)
     this.normalIcon = normalIcon
-    this.dimIcon = dimmed(normalIcon, 0.2)
+    this.dimIcon = dimmed(normalIcon)
     const tray = new Tray(normalIcon)
     this.tray = tray
     tray.on('click', () => { options.open() })
