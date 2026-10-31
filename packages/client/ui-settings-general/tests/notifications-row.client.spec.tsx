@@ -62,7 +62,7 @@ describe('DesktopNotificationsRow', () => {
     // The focus-mode switch defaults to off (notifications only while unfocused).
     expect(screen.getByRole('switch', { name: 'Show notifications while focused' }).getAttribute('aria-checked')).toBe('false')
     // Recommended-off rows carry the flood warning.
-    expect(screen.getAllByText('Not recommended — may cause notification flooding')).toHaveLength(4)
+    expect(screen.getAllByText('Not recommended — may cause notification flooding')).toHaveLength(6)
     // The quick control starts as all-on (mixed state).
     expect(screen.getByRole('button', { name: 'Enable all' })).toBeTruthy()
     await waitFor(() => { expect(bridge.get).toHaveBeenCalled() })
@@ -73,18 +73,21 @@ describe('DesktopNotificationsRow', () => {
     const { bridge, read } = notificationsBridge(DEFAULTS)
     const injected: DesktopNotificationsRowInjected = { bridge }
     render(<DesktopNotificationsRow {...kit} t={t} {...injected} />)
-    // First click: enable all (category switches only; the focus switch is a mode, not a category).
+    // First click: enable all (category switches only; the focus, non-current
+    // and tray-flash switches are modes, not categories).
     fireEvent.click(screen.getByRole('button', { name: 'Enable all' }))
     await waitFor(() => { expect(screen.getByRole('button', { name: 'Disable all' })).toBeTruthy() })
-    const categorySwitches = screen.getAllByRole('switch').filter(sw => sw.getAttribute('aria-label') !== 'Show notifications while focused')
+    const modeLabels = new Set(['Show notifications while focused', 'Non-current session', 'Tray icon flash'])
+    const categorySwitches = screen.getAllByRole('switch').filter(sw => !modeLabels.has(sw.getAttribute('aria-label') ?? ''))
+    expect(categorySwitches).toHaveLength(10)
     expect(categorySwitches.every(sw => sw.getAttribute('aria-checked') === 'true')).toBe(true)
-    expect(bridge.set).toHaveBeenCalledTimes(7)
+    expect(bridge.set).toHaveBeenCalledTimes(10)
     expect(read().focused).toBe(false)
     // Second click: disable all.
     fireEvent.click(screen.getByRole('button', { name: 'Disable all' }))
     await waitFor(() => { expect(screen.getByRole('button', { name: 'Enable all' })).toBeTruthy() })
     expect(categorySwitches.every(sw => sw.getAttribute('aria-checked') === 'false')).toBe(true)
-    expect(bridge.set).toHaveBeenCalledTimes(14)
+    expect(bridge.set).toHaveBeenCalledTimes(20)
     expect(read().focused).toBe(false)
   })
 

@@ -448,6 +448,13 @@ async function main(): Promise<void> {
   /** Track which session is currently shown in the UI. */
   let currentSessionId: string | undefined
   /**
+   * The session owning the most recent unread notification, so a tray click
+   * can open exactly that session (or the settings panel when none). Cleared
+   * when the user opens the window through the tray.
+   */
+  let unreadSessionId: string | undefined
+  let unreadPending = false
+  /**
    * The operating system is ending the session: the quit skips its confirmation. Windows sets it
    * on the definitive session-end message. macOS sets it on the power-off notification, which
    * another application can still cancel, so the next focus or show of the main window clears it.
@@ -947,23 +954,31 @@ async function main(): Promise<void> {
       throw new Error('desktop notify: sessionId must be a string')
     }
     if (!desktopSettings.notifications[category]) return
-    // Tray flash fires regardless of focus: the icon blink is the visual cue
-    // that something happened while the user was away from the notification panel.
-    // It is started here, before any focus or session filter can return early.
-    if (desktopSettings.notifications.trayFlash) tray?.flash()
-    // Focus mode: when "focused" is off (the default), the window being
-    // focused means the in-app panel already surfaces the event, so the
-    // native notification waits until the window loses focus. Turning the
-    // switch on shows notifications regardless of focus (convenient for
-    // verifying every category).
-    if (!desktopSettings.notifications.focused
-      && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()) return
     // Non-current-session filter: when off, notifications for sessions that
     // are not the currently active tab are suppressed. Notifications without
     // a sessionId always pass through. Default is ON.
-    if (!desktopSettings.notifications.nonCurrentSession
+    const backgroundSession = !desktopSettings.notifications.nonCurrentSession
       && sessionId !== undefined && currentSessionId !== undefined
-      && sessionId !== currentSessionId) return
+      && sessionId !== currentSessionId
+    if (backgroundSession) return
+    // Focus mode: when "focused" is off (the default), notice for the session
+    // the user is already looking at is redundant — the in-app panel shows it.
+    // A background session, or a notice without a session (credential /
+    // remote-access), is not redundant while focused, so it still surfaces.
+    // Turning the switch on notifies regardless of focus.
+    const forVisibleSession = sessionId === undefined || currentSessionId === undefined
+      || sessionId === currentSessionId
+    const focusedOnVisible = !desktopSettings.notifications.focused
+      && forVisibleSession
+      && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()
+    if (focusedOnVisible) return
+    // The tray carries the unread state: it remembers the newest unread
+    // session so a tray click jumps straight to that conversation (or the
+    // settings surface for session-less notices) instead of just raising the
+    // window. The blink itself follows the trayFlash switch.
+    unreadPending = true
+    if (sessionId !== undefined) unreadSessionId = sessionId
+    if (desktopSettings.notifications.trayFlash) tray?.flash()
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
       : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
@@ -1236,6 +1251,19 @@ async function main(): Promise<void> {
       console.warn('desktop tray notice: unavailable', error)
     }
   }
+  // Tray click: stop the unread blink, reveal the window, and hand the web UI
+  // the unread session so it opens that conversation (or the settings surface
+  // for session-less notices such as credential / remote-access requests).
+  const openFromTray = (): void => {
+    tray?.stopFlash()
+    const target = unreadSessionId
+    const pending = unreadPending
+    unreadPending = false
+    unreadSessionId = undefined
+    focusPrimaryWindow()
+    if (!pending || mainWindow === undefined || mainWindow.isDestroyed()) return
+    mainWindow.webContents.send(DESKTOP_IPC.notifyAction, target)
+  }
   // Linux system trays require a raster icon; Windows uses its multi-size ICO.
   const trayIconPath = process.platform === 'win32'
     ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
@@ -1244,7 +1272,7 @@ async function main(): Promise<void> {
     // The tray is the way back to a hidden window; without it, relaunching the application still focuses it.
     try {
       tray = new DesktopTray({ iconPath: trayIconPath, locale: currentDesktopLocale,
-        open: () => { tray?.stopFlash(); focusPrimaryWindow() }, quit: () => { app.quit() } })
+        open: () => { openFromTray() }, quit: () => { app.quit() } })
     } catch (error) { console.warn('desktop tray: unavailable', error) }
   }
   const backgroundNotice = process.platform === 'win32'
@@ -1347,9 +1375,6 @@ async function main(): Promise<void> {
     browserGuests.bind(window, (guest, name) => shortcuts.attachGuest(window, guest, name))
     shortcuts.attach(window)
     window.on('focus', automaticCheck)
-    // The tray stops flashing once the user focuses the window: the blink
-    // served its purpose of drawing attention, and a steady icon is restored.
-    window.on('focus', () => { tray?.stopFlash() })
     // Closing hides by default: the page and the Host keep running, and the next show resumes the same document.
     // The General settings close-behavior option can turn the close button into a real quit instead.
     window.on('close', (event) => {
