@@ -62,8 +62,9 @@ describe('DesktopNotificationsRow', () => {
     const injected: DesktopNotificationsRowInjected = { bridge }
     const view = render(<DesktopNotificationsRow {...kit} t={t} {...injected} />)
     const switches = screen.getAllByRole('switch')
-    // 10 categories × 2 (enable + sticky) + focused + nonCurrentSession + trayFlash = 23
-    expect(switches).toHaveLength(23)
+    // 10 categories (enable) + focused + nonCurrentSession + trayFlash = 13
+    // sticky is a button, not a switch
+    expect(switches).toHaveLength(13)
     // Approval/question/job default on; subagent/credential/remote/session default off.
     expect(screen.getByRole('switch', { name: 'Approval requests' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.getByRole('switch', { name: 'Subagent finished' }).getAttribute('aria-checked')).toBe('false')
@@ -88,7 +89,7 @@ describe('DesktopNotificationsRow', () => {
     // and tray-flash switches are modes, not categories).
     fireEvent.click(screen.getByRole('button', { name: 'Enable all' }))
     await waitFor(() => { expect(screen.getByRole('button', { name: 'Disable all' })).toBeTruthy() })
-    const modeLabels = new Set(['Show notifications while focused', 'Non-current session', 'Tray icon flash', 'Click to dismiss'])
+    const modeLabels = new Set(['Show notifications while focused', 'Non-current session', 'Tray icon flash'])
     const categorySwitches = screen.getAllByRole('switch').filter(sw => !modeLabels.has(sw.getAttribute('aria-label') ?? ''))
     expect(categorySwitches).toHaveLength(10)
     expect(categorySwitches.every(sw => sw.getAttribute('aria-checked') === 'true')).toBe(true)

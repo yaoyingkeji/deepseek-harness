@@ -163,15 +163,19 @@ export function DesktopNotificationsRow({ bridge, t }:
           {DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED.includes(category) && (
             <div className={css.warning}>{t('notifications.floodWarning')}</div>
           )}
+          <button
+            type="button"
+            className={settings.sticky[category] ? css.stickyOn : css.stickyOff}
+            disabled={busy}
+            title={t('notifications.stickyHint')}
+            onClick={() => { setEnabled(`sticky:${category}` as `sticky:${typeof category}`, !settings.sticky[category]) }}
+          >
+            <span className={css.stickyIcon}>{settings.sticky[category] ? '📌' : '📍'}</span>
+            <span className={css.stickyText}>{t('notifications.sticky')}</span>
+          </button>
         </div>
-        <div className={css.switchGroup}>
-          <Switch checked={settings[category]} disabled={busy} label={t(`notifications.${category}`)}
-            onChange={(next) => { setEnabled(category, next) }} />
-          <label className={css.stickyToggle} title={t('notifications.stickyHint')}>
-            <Switch checked={settings.sticky[category]} disabled={busy} label={t('notifications.sticky')}
-              onChange={(next) => { setEnabled(`sticky:${category}` as `sticky:${typeof category}`, next) }} />
-          </label>
-        </div>
+        <Switch checked={settings[category]} disabled={busy} label={t(`notifications.${category}`)}
+          onChange={(next) => { setEnabled(category, next) }} />
       </div>
     ))}
   </div>
