@@ -143,3 +143,59 @@
 .stickyText {
   white-space: nowrap;
 }
+
+/* ── Category two-column layout ── */
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 0 4px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  margin-bottom: 2px;
+}
+
+.headerLeft {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.headerRight {
+  flex: none;
+  width: 80px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.catRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 6px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l3);
+}
+
+.catLeft {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.catRight {
+  flex: none;
+  width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

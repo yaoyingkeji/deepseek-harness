@@ -153,29 +153,29 @@ export function DesktopNotificationsRow({ bridge, t }:
       <Switch checked={settings[TRAY_FLASH_KEY]} disabled={busy} label={t(`notifications.${TRAY_FLASH_KEY}`)}
         onChange={(next) => { setEnabled(TRAY_FLASH_KEY, next) }} />
     </div>
+    <div className={css.categoryHeader}>
+      <div className={css.headerLeft}>{t('notifications.title')}</div>
+      <div className={css.headerRight}>{t('notifications.sticky')}</div>
+    </div>
     {CATEGORIES.map(category => (
-      <div className={css.row} key={category}>
-        <div className={css.labels}>
-          <div className={css.labelRow}>
-            <div className={css.label}>{t(`notifications.${category}`)}</div>
-            <span className={css.help} title={t(`notifications.${category}Hint`)}>?</span>
+      <div className={css.catRow} key={category}>
+        <div className={css.catLeft}>
+          <div className={css.labels}>
+            <div className={css.labelRow}>
+              <div className={css.label}>{t(`notifications.${category}`)}</div>
+              <span className={css.help} title={t(`notifications.${category}Hint`)}>?</span>
+            </div>
+            {DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED.includes(category) && (
+              <div className={css.warning}>{t('notifications.floodWarning')}</div>
+            )}
           </div>
-          {DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED.includes(category) && (
-            <div className={css.warning}>{t('notifications.floodWarning')}</div>
-          )}
-          <button
-            type="button"
-            className={settings.sticky[category] ? css.stickyOn : css.stickyOff}
-            disabled={busy}
-            title={t('notifications.stickyHint')}
-            onClick={() => { setEnabled(`sticky:${category}` as `sticky:${typeof category}`, !settings.sticky[category]) }}
-          >
-            <span className={css.stickyIcon}>{settings.sticky[category] ? '📌' : '📍'}</span>
-            <span className={css.stickyText}>{t('notifications.sticky')}</span>
-          </button>
+          <Switch checked={settings[category]} disabled={busy} label={t(`notifications.${category}`)}
+            onChange={(next) => { setEnabled(category, next) }} />
         </div>
-        <Switch checked={settings[category]} disabled={busy} label={t(`notifications.${category}`)}
-          onChange={(next) => { setEnabled(category, next) }} />
+        <div className={css.catRight}>
+          <Switch checked={settings.sticky[category]} disabled={busy} label={t('notifications.sticky')}
+            onChange={(next) => { setEnabled(`sticky:${category}` as `sticky:${typeof category}`, next) }} />
+        </div>
       </div>
     ))}
   </div>
