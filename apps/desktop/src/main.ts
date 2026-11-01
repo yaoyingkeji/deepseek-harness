@@ -934,7 +934,8 @@ async function main(): Promise<void> {
         }
         if (state.phase === 'no_release') {
           await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
-            message: locale.messages.updateNoRelease })
+            message: locale.messages.updateNoRelease,
+            detail: formatDesktopMessage(locale.messages.updateCurrentDetail, { version: app.getVersion() }) })
           return
         }
         if (state.phase === 'upstream_available') {
