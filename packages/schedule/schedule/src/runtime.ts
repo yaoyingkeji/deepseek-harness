@@ -162,6 +162,15 @@ export class ScheduleRuntime {
         })
         await this.commit(delivered)
         committed.add(id)
+        // Notify desktop of delivered scheduled reminders.
+        try {
+          this.ctx.emit('schedule/reminder-delivered', {
+            sessionId: target.sessionId,
+            count: 1,
+          })
+        } catch (emitError: unknown) {
+          this.ctx.logger.warn(`schedule: reminder-delivered event failed: ${String(emitError)}`)
+        }
         return { task: delivered, admitted: true }
       } finally {
         this.settle(held, committed, sent.execution)
@@ -269,6 +278,16 @@ export class ScheduleRuntime {
             targetSessionId: target.sessionId,
           }))
           committed.add(task.record.id)
+        }
+        // Notify desktop of delivered scheduled reminders.
+        try {
+          this.ctx.emit('schedule/reminder-delivered', {
+            sessionId: target.sessionId,
+            count: admitted.length,
+          })
+        } catch (emitError: unknown) {
+          // A failed notification emission must not block the reminder delivery.
+          this.ctx.logger.warn(`schedule: reminder-delivered event failed: ${String(emitError)}`)
         }
       } finally {
         this.settle(held, committed, sent.execution)
