@@ -86,13 +86,13 @@ export class DesktopTray {
 
   /**
    * Flash the tray icon by alternating between the normal icon and a dimmed
-   * copy every 800 ms, analogous to QQ / WeChat on Linux.
+   * copy every 600 ms, analogous to QQ / WeChat on Linux.
    *
    * Implementation note: on Linux DDE / Ayatana StatusNotifierItem (SNI)
    * implementations, calling setImage() every 500 ms floods the D-Bus bridge
    * with property updates and can desync the SNI registration — the tray icon
    * then stops responding to clicks and its context menu disappears. We use
-   * a slower blink rate (800 ms) and guard setImage with a cheap identity
+   * a slower blink rate (600 ms) and guard setImage with a cheap identity
    * check so redundant updates are skipped.
    *
    * A second call while already flashing is a no-op; only the user opening the
@@ -112,7 +112,7 @@ export class DesktopTray {
         lastIcon = next
       }
       showNormal = !showNormal
-    }, 800)
+    }, 600)
   }
 
   /** Stop flashing immediately and restore the normal tray icon. */
