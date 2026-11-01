@@ -25,7 +25,7 @@ const CATEGORIES: readonly DesktopNotificationCategory[] = [
 const DEFAULT_SETTINGS: DesktopNotificationSettings = {
   approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
   plugin: true, schedule: true, goal: true, focused: false, nonCurrentSession: true, trayFlash: true,
-  sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
+  sticky: { approval: false, question: false, job: false, subagent: false, credential: false, remote: false, session: false, plugin: false, schedule: false, goal: false },
 }
 
 /** Focus-mode switch key: whether notifications also appear while focused. */
@@ -51,7 +51,7 @@ export function DesktopNotificationsRow({ bridge, t }:
     approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
     plugin: true, schedule: true, goal: true,
     focused: false, nonCurrentSession: true, trayFlash: true,
-    sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
+    sticky: { approval: false, question: false, job: false, subagent: false, credential: false, remote: false, session: false, plugin: false, schedule: false, goal: false },
   })
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -90,10 +90,18 @@ export function DesktopNotificationsRow({ bridge, t }:
     setFailed(false)
     setBusy(true)
     const previous = settings
-    const toggled = Object.fromEntries(CATEGORIES.map(category => [category, !allOn])) as Partial<DesktopNotificationSettings>
-    const next = { ...settings, ...toggled } as DesktopNotificationSettings
+    const target = !allOn
+    const toggled = Object.fromEntries(CATEGORIES.map(category => [category, target])) as Partial<DesktopNotificationSettings>
+    // When enabling all, also turn on every sticky switch so "全部开启" is
+    // truly all-on; when disabling all, clear sticky too since it has no
+    // effect when the notification itself is off.
+    const stickyNext = Object.fromEntries(CATEGORIES.map(category => [category, target])) as Record<DesktopNotificationCategory, boolean>
+    const next = { ...settings, ...toggled, sticky: stickyNext } as DesktopNotificationSettings
     setSettings(next)
-    Promise.all(CATEGORIES.map(category => bridge.set(category, !allOn))).catch(() => {
+    Promise.all([
+      ...CATEGORIES.map(category => bridge.set(category, target)),
+      ...CATEGORIES.map(category => bridge.set(`sticky:${category}` as DesktopNotificationSwitchKey, target)),
+    ]).catch(() => {
       setFailed(true)
       setSettings(previous)
     }).finally(() => { setBusy(false) })

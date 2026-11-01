@@ -94,13 +94,15 @@ describe('DesktopNotificationsRow', () => {
     // their aria-label is "Manual close" and they are also excluded.
     expect(categorySwitches).toHaveLength(10)
     expect(categorySwitches.every(sw => sw.getAttribute('aria-checked') === 'true')).toBe(true)
-    expect(bridge.set).toHaveBeenCalledTimes(10)
+    // 10 category sets + 10 sticky sets = 20 calls
+    expect(bridge.set).toHaveBeenCalledTimes(20)
     expect(read().focused).toBe(false)
     // Second click: disable all.
     fireEvent.click(screen.getByRole('button', { name: 'Disable all' }))
     await waitFor(() => { expect(screen.getByRole('button', { name: 'Enable all' })).toBeTruthy() })
     expect(categorySwitches.every(sw => sw.getAttribute('aria-checked') === 'false')).toBe(true)
-    expect(bridge.set).toHaveBeenCalledTimes(20)
+    // 20 + 20 = 40 total
+    expect(bridge.set).toHaveBeenCalledTimes(40)
     expect(read().focused).toBe(false)
   })
 
