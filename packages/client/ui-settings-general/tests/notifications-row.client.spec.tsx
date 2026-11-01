@@ -6,7 +6,7 @@
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { allowAllAccess } from '@deepseek-ai/dsh-client-test-runtime'
+import { allowAllAccess, contextMenuHook } from '@deepseek-ai/dsh-client-test-runtime'
 import type { TriggerContentProps } from '../src/client/chrome.tsx'
 import { en } from '../src/client/locales.ts'
 import { DesktopNotificationsRow, type DesktopNotificationsRowInjected } from '../src/client/DesktopNotificationsRow.tsx'
@@ -24,6 +24,7 @@ const useSessionStatus: TriggerContentProps['useSessionStatus'] = selector => se
 const kit = {
   useSessions: unusedHook, useSessionStatus,
   usePanelInfo, useSessionRetainInfo: () => undefined, useResource, useWorkspaces: unusedHook,
+  useContextMenu: contextMenuHook(),
   ...allowAllAccess,
 }
 
