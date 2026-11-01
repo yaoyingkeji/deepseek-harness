@@ -17,12 +17,13 @@ const FALLBACK_HTTP_TIMEOUT_MS = 15_000
 
 /**
  * Whether the packaged application has an update source. On Linux the generic
- * provider writes latest-linux.yml instead of app-update.yml.
+ * provider writes app-update.yml (and publishes latest-linux.yml to the feed
+ * URL); on Windows and macOS the provider writes app-update.yml.
  */
 function updateSourceExists(): boolean {
   if (!app.isPackaged) return false
-  if (process.platform === 'linux') return existsSync(join(process.resourcesPath, 'latest-linux.yml'))
   return existsSync(join(process.resourcesPath, 'app-update.yml'))
+    || existsSync(join(process.resourcesPath, 'latest-linux.yml'))
 }
 
 /**
