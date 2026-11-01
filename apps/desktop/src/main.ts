@@ -1309,7 +1309,16 @@ async function main(): Promise<void> {
     const pending = unreadPending
     unreadPending = false
     unreadSessionId = undefined
-    focusPrimaryWindow()
+    // Directly show and focus the window, bypassing focusPrimaryWindow's
+    // enteredWorkspace guard: a tray click must always reveal the window
+    // so the user can return to a hidden app or act on unread messages.
+    if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+    } else {
+      focusPrimaryWindow()
+    }
     if (!pending || mainWindow === undefined || mainWindow.isDestroyed()) return
     mainWindow.webContents.send(DESKTOP_IPC.notifyAction, target)
   }
