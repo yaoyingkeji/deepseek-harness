@@ -63,6 +63,10 @@ sudo dpkg -i deepseek-harness_*_amd64.deb
 | :---: | :---: |
 | ![应用菜单](docs/screenshots/linux-custom-titlebar/screenshot-03-app-menu.png) | ![菜单展开效果](docs/screenshots/linux-custom-titlebar/screenshot-04-menu-open.png) |
 
+| 桌面通知设置 | 托盘闪烁与桌面通知 |
+| :---: | :---: |
+| ![桌面通知设置](docs/screenshots/linux-custom-titlebar/screenshot-05-settings.png) | ![托盘闪烁与桌面通知](docs/screenshots/linux-custom-titlebar/screenshot-06-tray-flash.gif) |
+
 ### `linux-package-official` — 官方上游版
 
 与上游 `master` 功能完全一致，**仅额外注入 Linux 打包基础设施**（`linux-x64` 构建目标、`electron-builder` 配置、`package-linux.sh` 脚本），不做任何 UI 或功能性修改。应用内「检查更新」指向 `linux-latest-official` 自动更新源。适合需要官方原版体验的用户。
