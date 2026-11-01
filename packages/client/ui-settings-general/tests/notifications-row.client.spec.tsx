@@ -88,8 +88,10 @@ describe('DesktopNotificationsRow', () => {
     // and tray-flash switches are modes, not categories).
     fireEvent.click(screen.getByRole('button', { name: 'Enable all' }))
     await waitFor(() => { expect(screen.getByRole('button', { name: 'Disable all' })).toBeTruthy() })
-    const modeLabels = new Set(['Show notifications while focused', 'Non-current session', 'Tray icon flash', 'Click to dismiss'])
+    const modeLabels = new Set(['Show notifications while focused', 'Non-current session', 'Tray icon flash', 'Manual close'])
     const categorySwitches = screen.getAllByRole('switch').filter(sw => !modeLabels.has(sw.getAttribute('aria-label') ?? ''))
+    // Only the 10 enable switches; the 10 sticky switches are filtered because
+    // their aria-label is "Manual close" and they are also excluded.
     expect(categorySwitches).toHaveLength(10)
     expect(categorySwitches.every(sw => sw.getAttribute('aria-checked') === 'true')).toBe(true)
     expect(bridge.set).toHaveBeenCalledTimes(10)

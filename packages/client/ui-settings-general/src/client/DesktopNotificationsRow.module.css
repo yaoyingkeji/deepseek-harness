@@ -149,7 +149,7 @@
 .categoryHeader {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   padding: 8px 0 4px;
   border-bottom: 0.5px solid var(--dsw-alias-border-l2);
   margin-bottom: 2px;
@@ -164,9 +164,20 @@
   letter-spacing: 0.04em;
 }
 
+.headerSwitch {
+  flex: none;
+  width: 44px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .headerRight {
   flex: none;
-  width: 80px;
+  width: 44px;
   text-align: center;
   font-size: 11px;
   font-weight: 600;
@@ -178,23 +189,27 @@
 .catRow {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   padding: 6px 0;
   border-bottom: 0.5px solid var(--dsw-alias-border-l3);
 }
 
-.catLeft {
+.catLabels {
   flex: 1;
+  min-width: 0;
+}
+
+.catSwitch {
+  flex: none;
+  width: 44px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-width: 0;
+  justify-content: center;
 }
 
 .catRight {
   flex: none;
-  width: 80px;
+  width: 44px;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -71,7 +71,14 @@ export function DesktopNotificationsRow({ bridge, t }:
     setFailed(false)
     setBusy(true)
     const previous = settings
-    setSettings({ ...settings, [category]: enabled })
+    // Sticky sub-keys arrive as `sticky:<category>`: update the nested
+    // sticky record rather than creating a bogus top-level key.
+    if (typeof category === 'string' && category.startsWith('sticky:')) {
+      const cat = category.slice(7) as DesktopNotificationCategory
+      setSettings({ ...settings, sticky: { ...settings.sticky, [cat]: enabled } })
+    } else {
+      setSettings({ ...settings, [category]: enabled })
+    }
     void bridge.set(category, enabled).catch(() => {
       setFailed(true)
       setSettings(previous)
@@ -155,26 +162,31 @@ export function DesktopNotificationsRow({ bridge, t }:
     </div>
     <div className={css.categoryHeader}>
       <div className={css.headerLeft}>{t('notifications.title')}</div>
+      <div className={css.headerSwitch}>{t('notifications.title')}</div>
       <div className={css.headerRight}>{t('notifications.sticky')}</div>
     </div>
     {CATEGORIES.map(category => (
       <div className={css.catRow} key={category}>
-        <div className={css.catLeft}>
-          <div className={css.labels}>
-            <div className={css.labelRow}>
-              <div className={css.label}>{t(`notifications.${category}`)}</div>
-              <span className={css.help} title={t(`notifications.${category}Hint`)}>?</span>
-            </div>
-            {DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED.includes(category) && (
-              <div className={css.warning}>{t('notifications.floodWarning')}</div>
-            )}
+        <div className={css.catLabels}>
+          <div className={css.labelRow}>
+            <div className={css.label}>{t(`notifications.${category}`)}</div>
+            <span className={css.help} title={t(`notifications.${category}Hint`)}>?</span>
           </div>
+          {DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED.includes(category) && (
+            <div className={css.warning}>{t('notifications.floodWarning')}</div>
+          )}
+        </div>
+        <div className={css.catSwitch}>
           <Switch checked={settings[category]} disabled={busy} label={t(`notifications.${category}`)}
             onChange={(next) => { setEnabled(category, next) }} />
         </div>
         <div className={css.catRight}>
-          <Switch checked={settings.sticky[category]} disabled={busy} label={t('notifications.sticky')}
-            onChange={(next) => { setEnabled(`sticky:${category}` as `sticky:${typeof category}`, next) }} />
+          <Switch
+            checked={settings.sticky[category] && settings[category]}
+            disabled={busy || !settings[category]}
+            label={t('notifications.sticky')}
+            onChange={(next) => { setEnabled(`sticky:${category}` as `sticky:${typeof category}`, next) }}
+          />
         </div>
       </div>
     ))}
