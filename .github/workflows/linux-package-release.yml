@@ -184,6 +184,14 @@ jobs:
 
           #### 界面截图
 
+          | 欢迎界面 | 主界面（自定义标题栏） |
+          | :---: | :---: |
+          | ![欢迎界面](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-01-welcome.png) | ![主界面](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-02-main-window.png) |
+
+          | 「应用」菜单 | 菜单展开效果 |
+          | :---: | :---: |
+          | ![应用菜单](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-03-app-menu.png) | ![菜单展开效果](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-04-menu-open.png) |
+
           | 桌面通知设置 | 托盘闪烁与桌面通知 |
           | :---: | :---: |
           | ![桌面通知设置](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-05-settings.png) | ![托盘闪烁与桌面通知](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-06-tray-flash.gif) |
@@ -254,6 +262,14 @@ jobs:
           6. **Auto-update** — In-app "Check for Updates" points to the `linux-latest` auto-update feed; AppImage auto-downloads and installs
 
           #### Screenshots
+
+          | Welcome | Main Window (Custom Title Bar) |
+          | :---: | :---: |
+          | ![Welcome](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-01-welcome.png) | ![Main Window](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-02-main-window.png) |
+
+          | App Menu | Menu Expanded |
+          | :---: | :---: |
+          | ![App Menu](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-03-app-menu.png) | ![Menu Expanded](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-04-menu-open.png) |
 
           | Notification Settings | Tray Flash & Desktop Notifications |
           | :---: | :---: |
@@ -457,6 +473,20 @@ jobs:
              · 远程接入 · 新会话 · 插件操作 · 定时提醒 · Goal 状态
           6. **自动更新** — 应用内「检查更新」指向此 `linux-latest` 自动更新源，AppImage 支持自动下载安装
 
+          ### 界面截图
+
+          | 欢迎界面 | 主界面（自定义标题栏） |
+          | :---: | :---: |
+          | ![欢迎界面](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-01-welcome.png) | ![主界面](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-02-main-window.png) |
+
+          | 「应用」菜单 | 菜单展开效果 |
+          | :---: | :---: |
+          | ![应用菜单](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-03-app-menu.png) | ![菜单展开效果](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-04-menu-open.png) |
+
+          | 桌面通知设置 | 托盘闪烁与桌面通知 |
+          | :---: | :---: |
+          | ![桌面通知设置](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-05-settings.png) | ![托盘闪烁与桌面通知](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-06-tray-flash.gif) |
+
           ### 自动更新源
 
           此 Release 是 DeepSeek Harness Linux x64 **定制优化版** 的自动更新源。每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
@@ -490,6 +520,20 @@ jobs:
              · Approval requests · Model questions · Background jobs · Subagent finished · Credentials needed
              · Remote access · New session · Plugin operations · Schedule reminders · Goal status
           6. **Auto-update** — In-app "Check for Updates" points to this `linux-latest` auto-update feed; AppImage auto-downloads and installs
+
+          ### Screenshots
+
+          | Welcome | Main Window (Custom Title Bar) |
+          | :---: | :---: |
+          | ![Welcome](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-01-welcome.png) | ![Main Window](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-02-main-window.png) |
+
+          | App Menu | Menu Expanded |
+          | :---: | :---: |
+          | ![App Menu](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-03-app-menu.png) | ![Menu Expanded](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-04-menu-open.png) |
+
+          | Notification Settings | Tray Flash & Desktop Notifications |
+          | :---: | :---: |
+          | ![Notification Settings](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-05-settings.png) | ![Tray Flash & Desktop Notifications](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-06-tray-flash.gif) |
 
           ### Auto-Update Feed
 
