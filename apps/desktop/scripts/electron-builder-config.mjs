@@ -307,7 +307,7 @@ export function createElectronBuilderConfig(
       executableName: 'deepseek-harness',
       desktop: {
         entry: {
-          StartupWMClass: 'deepseek-harness',
+          StartupWMClass: 'deepseek-ai-dsh-desktop',
         },
       },
       target: ['AppImage', 'deb'],
