@@ -300,7 +300,7 @@ export function createElectronBuilderConfig(
       target: ['nsis'],
     },
     linux: {
-      icon: fileURLToPath(new URL('../resources/icon.png', import.meta.url)),
+      icon: fileURLToPath(new URL('../resources/icons', import.meta.url)),
       category: 'Development',
       maintainer: 'DeepSeek AI',
       synopsis: 'Desktop shell for a bundled dsh runtime and external plugins',
