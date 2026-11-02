@@ -305,6 +305,11 @@ export function createElectronBuilderConfig(
       maintainer: 'DeepSeek AI',
       synopsis: 'Desktop shell for a bundled dsh runtime and external plugins',
       executableName: 'deepseek-harness',
+      desktop: {
+        entry: {
+          StartupWMClass: 'deepseek-harness',
+        },
+      },
       target: ['AppImage', 'deb'],
     },
     nsis: {
