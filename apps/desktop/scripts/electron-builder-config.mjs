@@ -1,9 +1,9 @@
 import { readInstallerLocales, renderInstallerStrings } from './installer-locales.mjs'
 import { officePackageDirectories } from '../../../scripts/libreoffice-packages.mjs'
 import { X509Certificate } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync, mkdirSync, copyFileSync, readdirSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
+import { join, relative, sep, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -113,7 +113,14 @@ export function createElectronBuilderConfig(
   let dshDestination
   let windowsCode = []
   const unpack = ['**/*.{node,dylib,dll,so,exe}', '**/*.so.*', '**/spawn-helper', '**/@vscode/ripgrep-*/bin/rg',
-    `**/node_modules/@deepseek-ai/libreoffice-kit-${resolvedPlatform}-${resolvedArch}/**/*`]
+    `**/node_modules/@deepseek-ai/libreoffice-kit-${resolvedPlatform}-${resolvedArch}/**/*`,
+    // sharp JS 依赖解包，让独立 Node 子进程能直接 require（不读 asar）
+    '**/node_modules/sharp/**',
+    '**/node_modules/detect-libc/**',
+    '**/node_modules/semver/**',
+    '**/node_modules/@img/**',
+    // sharp worker 脚本必须解包，独立 Node 不能读 asar
+    '**/node_modules/@deepseek-ai/dsh-attachment-local/lib/**']
   const windowsSigner = packagesWindows && !unsigned
     ? createWindowsTokenSigner({
         certificateFile: env.DSH_DESKTOP_WINDOWS_CER_FILE,
@@ -259,6 +266,24 @@ export function createElectronBuilderConfig(
         preparedRuntimeVersion ?? productVersion, { platform: resolvedPlatform, arch: resolvedArch })
       // Unsigned Windows builds skip electron-builder's afterSign hook.
       if (packagesWindows && unsigned) await verifyWindowsAsarUnpack(buildPaths.dsh, resourcesDir, windowsCode)
+      // Linux: 确保 @img 包的 package.json 文件被解包。
+      // electron-builder 的 glob 匹配 .node/.so 文件但不复制 package.json，
+      // 导致独立 Node 的 require() 无法解析 @img/sharp-linux-x64。
+      if (resolvedPlatform === 'linux') {
+        const asarUnpackedDir = join(resourcesDir, 'app.asar.unpacked')
+        const imgScopeDir = join(asarUnpackedDir, 'dsh', 'node_modules', '@img')
+        const imgSrcDir = join(buildPaths.dsh, 'node_modules', '@img')
+        if (existsSync(imgSrcDir)) {
+          for (const pkgName of readdirSync(imgSrcDir)) {
+            const srcPkgJson = join(imgSrcDir, pkgName, 'package.json')
+            const destPkgJson = join(imgScopeDir, pkgName, 'package.json')
+            if (existsSync(srcPkgJson) && !existsSync(destPkgJson)) {
+              mkdirSync(dirname(destPkgJson), { recursive: true })
+              copyFileSync(srcPkgJson, destPkgJson)
+            }
+          }
+        }
+      }
     },
     afterSign: async context => {
       if (windowsSigner !== undefined) {
