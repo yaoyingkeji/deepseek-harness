@@ -30,6 +30,9 @@ export interface WorkerMetadata {
   comments?: Buffer
 }
 
+/** Worker 编码选项。 */
+export type WorkerEncodeOptions = WorkerRequestOptions
+
 /** Worker 编码结果。 */
 export interface WorkerEncodeResult {
   data: Uint8Array
@@ -88,15 +91,19 @@ function standaloneNodePath(): string {
 }
 
 /** 请求/响应的 JSON 行协议。 */
+interface WorkerRequestOptions {
+  format?: 'webp' | 'jpeg' | 'png'
+  quality?: number
+  resize?: { width?: number; height?: number; fit?: 'cover' | 'contain' | 'inside' | 'outside' }
+  /** 是否执行 normalization pipeline（rotate + toColourspace('srgb')） */
+  normalize?: boolean
+}
+
 interface WorkerRequest {
   id: number
   op: 'metadata' | 'raw' | 'encode'
   data: string
-  options?: {
-    format?: 'webp' | 'jpeg' | 'png'
-    quality?: number
-    resize?: { width?: number; height?: number; fit?: 'cover' | 'contain' | 'inside' | 'outside' }
-  }
+  options?: WorkerRequestOptions | undefined
 }
 
 interface WorkerResponse {
@@ -179,7 +186,7 @@ export class SharpWorker {
   }
 
   /** 发送请求并等待响应。 */
-  private async request(op: WorkerRequest['op'], data: Uint8Array, options?: WorkerRequest['options']): Promise<WorkerResponse> {
+  private async request(op: WorkerRequest['op'], data: Uint8Array, options?: WorkerRequestOptions): Promise<WorkerResponse> {
     this.ensureChild()
     if (this.child === undefined) throw new Error('sharp worker is not running')
 
@@ -219,7 +226,7 @@ export class SharpWorker {
   }
 
   /** 编码图片（resize + format 转换）。 */
-  async encode(data: Uint8Array, options?: WorkerRequest['options']): Promise<WorkerEncodeResult> {
+  async encode(data: Uint8Array, options?: WorkerRequestOptions): Promise<WorkerEncodeResult> {
     const resp = await this.request('encode', data, options)
     if (!resp.ok) throw new Error(resp.error ?? 'sharp worker encode failed')
     const result = resp.result as { data: string; mediaType: string; width: number; height: number }
