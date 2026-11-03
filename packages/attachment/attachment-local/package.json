@@ -25,6 +25,7 @@
   "files": [
     "locale/*.json",
     "lib/index.js",
+    "lib/sharp-worker.mjs",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
