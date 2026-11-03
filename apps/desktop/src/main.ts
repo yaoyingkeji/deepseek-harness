@@ -200,6 +200,8 @@ interface RuntimeResources {
   readonly node: string
   readonly pnpm: string
   readonly dsh: string
+  /** 独立 Node 二进制路径（仅 Linux 打包模式），用于 sharp worker 子进程 */
+  readonly standaloneNode?: string
 }
 
 function runtimeResources(): RuntimeResources {
@@ -211,7 +213,14 @@ function runtimeResources(): RuntimeResources {
       : join(process.resourcesPath, 'runtime', 'primary-runtime', 'dependencies', 'pnpm', 'bin', 'pnpm.mjs'))
   const dsh = (development ? process.env.DSH_DESKTOP_DSH_DIR : undefined)
     ?? (development ? join(app.getAppPath(), '.desktop-build', 'development', 'project') : join(app.getAppPath(), 'dsh'))
-  return { node, nodeBin, pnpm, dsh }
+  // Linux: 独立 Node 二进制路径，用于 sharp worker 子进程
+  // 独立 Node 不链接 GTK/gobject/glib，从根源消除 sharp/libvips 的符号碰撞
+  const standaloneNode = development
+    ? undefined
+    : (process.platform === 'linux'
+      ? join(process.resourcesPath, 'runtime', 'primary-runtime', 'dependencies', 'node', 'bin', 'node')
+      : undefined)
+  return { node, nodeBin, pnpm, dsh, ...(standaloneNode !== undefined ? { standaloneNode } : {}) }
 }
 
 function developmentPrimaryRuntime(): string {
@@ -552,7 +561,8 @@ async function main(): Promise<void> {
   const backend = new DesktopBackendController((onFailure) => {
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
-      hostInspectPort, { ...hostEnvironment, DSH_CLIENT_VERSION: desktopClientVersion() }, onFailure,
+      hostInspectPort, { ...hostEnvironment, DSH_CLIENT_VERSION: desktopClientVersion(),
+        ...(resources.standaloneNode !== undefined ? { DSH_STANDALONE_NODE: resources.standaloneNode } : {}) }, onFailure,
       primaryRuntime,
       resources, (next) => { platformView.setSession(next) }, (record) => {
         operationJournal ??= new OperationJournal(join(app.getPath('userData'), 'plugin-operations'), {
