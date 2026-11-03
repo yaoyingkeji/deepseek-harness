@@ -3,7 +3,7 @@
 import type { Sharp } from 'sharp'
 import { AttachmentError } from '@deepseek-ai/dsh-attachment'
 import type { ImageMediaType } from '@deepseek-ai/dsh-attachment'
-import { requireSharp } from './sharp.ts'
+import { requireSharp, shouldUseSharpWorker, getSharpWorker, type WorkerMetadata } from './sharp.ts'
 
 /** Decoded metadata from a supported image. */
 export interface DetectedImage {
@@ -60,6 +60,33 @@ function carriesRetainedMetadata(metadata: Awaited<ReturnType<Sharp['metadata']>
     || metadata.orientation !== undefined
 }
 
+/** Convert worker metadata (base64-encoded blobs) to the DetectedImage shape. */
+function workerMetadataToDetected(metadata: WorkerMetadata): DetectedImage {
+  const mediaType = MEDIA_TYPES[metadata.format]
+  if (mediaType === undefined) {
+    throw new AttachmentError('Unsupported or malformed image data.', 'INVALID_IMAGE')
+  }
+  const transposed = metadata.orientation !== undefined && metadata.orientation >= 5
+  const carriesMetadata = metadata.exif !== undefined
+    || metadata.xmp !== undefined
+    || metadata.iptc !== undefined
+    || metadata.icc !== undefined
+    || metadata.hasProfile
+    || metadata.tifftagPhotoshop !== undefined
+    || metadata.comments !== undefined
+    || metadata.orientation !== undefined
+  return {
+    mediaType,
+    width: transposed ? metadata.height : metadata.width,
+    height: transposed ? metadata.width : metadata.height,
+    animated: (metadata.pages ?? 1) > 1,
+    carriesMetadata,
+    depth: metadata.depth,
+    space: metadata.space,
+    hasAlpha: metadata.hasAlpha,
+  }
+}
+
 async function imageMetadata(image: Sharp): Promise<DetectedImage> {
   const metadata = await image.metadata()
   const mediaType = MEDIA_TYPES[metadata.format as string]
@@ -90,6 +117,15 @@ async function imageMetadata(image: Sharp): Promise<DetectedImage> {
  * @returns verified format and dimensions.
  */
 export async function probeImage(data: Uint8Array): Promise<DetectedImage> {
+  if (shouldUseSharpWorker()) {
+    try {
+      const metadata = await getSharpWorker().metadata(data)
+      return workerMetadataToDetected(metadata)
+    } catch (error) {
+      if (error instanceof AttachmentError) throw error
+      throw new AttachmentError('Unsupported or malformed image data.', 'INVALID_IMAGE', { cause: error })
+    }
+  }
   const sharp = requireSharp()
   try {
     return await imageMetadata(sharp(data, { failOn: 'error', limitInputPixels: false }))
@@ -114,6 +150,25 @@ export interface DecodedImageLimits {
  * @returns verified format and dimensions.
  */
 export async function detectImage(data: Uint8Array, limits?: DecodedImageLimits): Promise<DetectedImage> {
+  if (shouldUseSharpWorker()) {
+    try {
+      const worker = getSharpWorker()
+      const metadata = await worker.metadata(data)
+      const detected = workerMetadataToDetected(metadata)
+      if (limits?.maxPixels !== undefined && detected.width * detected.height > limits.maxPixels) {
+        throw new AttachmentError('Image exceeds the configured decoded-pixel limit.', 'IMAGE_TOO_MANY_PIXELS')
+      }
+      if (limits?.maxDimension !== undefined && Math.max(detected.width, detected.height) > limits.maxDimension) {
+        throw new AttachmentError('Image exceeds the configured per-side pixel limit.', 'IMAGE_DIMENSION_TOO_LARGE')
+      }
+      // Full decode to validate the image can be rasterised.
+      await worker.rawDecode(data)
+      return detected
+    } catch (error) {
+      if (error instanceof AttachmentError) throw error
+      throw new AttachmentError('Unsupported or malformed image data.', 'INVALID_IMAGE', { cause: error })
+    }
+  }
   const sharp = requireSharp()
   try {
     const image = sharp(data, { failOn: 'error', limitInputPixels: false })
