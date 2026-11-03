@@ -103,7 +103,7 @@ jobs:
           ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
           TAG="v${VERSION}-linux-x64-fix-sharp-v2"
 
-          NOTES="## sharp SIGSEGV 修复测试构建
+          NOTES="## sharp SIGSEGV 修复测试构建 v2
 
           基于 linux-custom-titlebar 分支，修复 Linux 上 sharp 图片处理导致 Host 进程 SIGSEGV 的问题。
 
@@ -113,8 +113,11 @@ jobs:
           - 独立 Node 不链接 GTK/gobject/glib，从根源消除符号碰撞
           - Host 进程不再加载 sharp/libvips，避免段错误"
 
+          # 如果 release 已存在则先删除
+          gh release delete "$TAG" --yes 2>/dev/null || true
+
           gh release create "$TAG" \
-            --title "DeepSeek Harness ${VERSION} - sharp SIGSEGV 修复测试" \
+            --title "DeepSeek Harness ${VERSION} - sharp SIGSEGV 修复测试 v2" \
             --notes "$NOTES" \
             --target fix/linux-sharp-sigsegv-v2 \
             --prerelease
