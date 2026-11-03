@@ -1,0 +1,123 @@
+# 临时工作流：构建 sharp SIGSEGV 修复测试包
+name: Linux sharp SIGSEGV 修复测试构建
+
+on:
+  push:
+    branches:
+      - fix/linux-sharp-sigsegv-v2
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: linux-sharp-fix-v2
+  cancel-in-progress: false
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  package:
+    name: 构建 sharp 修复测试包
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: fix/linux-sharp-sigsegv-v2
+          fetch-depth: 0
+          persist-credentials: false
+          clean: true
+
+      - name: 配置缓存目录
+        run: |
+          echo "NODE_COMPILE_CACHE=${{ runner.temp }}/node-compile-cache" >> "$GITHUB_ENV"
+          echo "npm_config_devdir=${{ runner.temp }}/node-gyp" >> "$GITHUB_ENV"
+          echo "TMPDIR=${{ runner.temp }}" >> "$GITHUB_ENV"
+
+      - uses: pnpm/action-setup@v5.0.0
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: 配置 pnpm store
+        id: pnpm-store
+        run: |
+          store_root="$HOME/.local/share/pnpm/store"
+          echo "PNPM_CONFIG_STORE_DIR=$store_root" >> "$GITHUB_ENV"
+          store_path=$(PNPM_CONFIG_STORE_DIR="$store_root" pnpm store path --silent)
+          echo "path=$store_path" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
+
+      - name: 安装依赖（不变更 lockfile）
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建官方 workspace
+        run: pnpm run build:official
+
+      - name: 打包 Linux AppImage + deb
+        run: bash package-linux.sh
+
+      - name: 确定版本号
+        id: version
+        run: |
+          V=$(node -p "require('./apps/desktop/package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "version=$V"
+
+      - name: 计算 SHA256SUMS
+        run: |
+          cd apps/desktop/.desktop-build/targets/linux-x64/artifacts
+          sha256sum *.AppImage *.deb > "SHA256SUMS.fix-sharp-v2-${{ steps.version.outputs.version }}"
+
+      - name: 上传构建制品
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: linux-sharp-fix-v2-${{ steps.version.outputs.version }}
+          path: |
+            apps/desktop/.desktop-build/targets/linux-x64/artifacts/*.AppImage
+            apps/desktop/.desktop-build/targets/linux-x64/artifacts/*.deb
+            apps/desktop/.desktop-build/targets/linux-x64/artifacts/*.yml
+            apps/desktop/.desktop-build/targets/linux-x64/artifacts/SHA256SUMS.*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: 发布 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          ARTIFACTS="apps/desktop/.desktop-build/targets/linux-x64/artifacts"
+          TAG="v${VERSION}-linux-x64-fix-sharp-v2"
+
+          NOTES="## sharp SIGSEGV 修复测试构建
+
+          基于 linux-custom-titlebar 分支，修复 Linux 上 sharp 图片处理导致 Host 进程 SIGSEGV 的问题。
+
+          ### 修复内容
+
+          - 将 sharp 图片处理隔离到独立 Node 子进程中运行
+          - 独立 Node 不链接 GTK/gobject/glib，从根源消除符号碰撞
+          - Host 进程不再加载 sharp/libvips，避免段错误"
+
+          gh release create "$TAG" \
+            --title "DeepSeek Harness ${VERSION} - sharp SIGSEGV 修复测试" \
+            --notes "$NOTES" \
+            --target fix/linux-sharp-sigsegv-v2 \
+            --prerelease
+
+          cd "$ARTIFACTS"
+          gh release upload "$TAG" *.AppImage *.deb *.yml SHA256SUMS.* --clobber
