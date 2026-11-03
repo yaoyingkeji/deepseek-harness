@@ -5,3 +5,6 @@ import { createLazyRequire } from '@deepseek-ai/dsh-lazy-require'
 
 /** Load Sharp on the first raster operation and retain its callable export. */
 export const requireSharp = createLazyRequire<typeof sharp>('sharp', import.meta.url)
+
+// Linux sharp worker 子进程隔离（避免 GTK 符号碰撞）
+export { shouldUseSharpWorker, getSharpWorker, type WorkerMetadata, type WorkerEncodeResult } from './sharp-process.ts'
