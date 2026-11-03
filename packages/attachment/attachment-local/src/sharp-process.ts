@@ -182,6 +182,16 @@ export class SharpWorker {
       this.pending.clear()
     })
 
+    // 捕获 stdin EPIPE 错误：当 worker 子进程已退出但还有 pending 请求时，
+    // stdin.write 会触发 EPIPE。不让它变成 uncaught exception。
+    child.stdin?.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EPIPE') {
+        // worker 已退出，pending 请求会被 close handler 拒绝
+        return
+      }
+      throw err
+    })
+
     this.child = child
   }
 
