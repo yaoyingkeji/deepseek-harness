@@ -7,4 +7,4 @@ import { createLazyRequire } from '@deepseek-ai/dsh-lazy-require'
 export const requireSharp = createLazyRequire<typeof sharp>('sharp', import.meta.url)
 
 // Linux sharp worker 子进程隔离（避免 GTK 符号碰撞）
-export { shouldUseSharpWorker, getSharpWorker, type WorkerMetadata, type WorkerEncodeResult } from './sharp-process.ts'
+export { shouldUseSharpWorker, getSharpWorker, type WorkerMetadata, type WorkerEncodeResult, type WorkerEncodeOptions } from './sharp-process.ts'
