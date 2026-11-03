@@ -33,6 +33,9 @@ cd "$REPO"
 # build record written by scripts/client-build-environment.ts must already be in place.
 
 step "release:pack dsh"
+# sharp-worker.mjs 必须在 release:pack 之前复制到 lib/ 目录，
+# 因为 publication-payload 的 files 字段只打包 lib/ 中的文件
+cp packages/attachment/attachment-local/src/sharp-worker.mjs packages/attachment/attachment-local/lib/sharp-worker.mjs
 pnpm run release:pack --family dsh --out "$PACKED_DSH" 2>&1 | tee "$LOGDIR/02-pack-dsh.log" | tail -10
 
 step "pack desktop-host"
