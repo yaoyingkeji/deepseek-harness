@@ -6,7 +6,7 @@ import type { ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import { encodeFirstWithinLimit, encodingLadder, isExhaustedEncoding } from './encoding.ts'
 import { detectImage, encodedAlphaIsCompatible } from './image.ts'
 import type { DetectedImage } from './image.ts'
-import { requireSharp } from './sharp.ts'
+import { requireSharp, shouldUseSharpWorker, getSharpWorker } from './sharp.ts'
 
 /** Deployment-resolved policy for the persisted normalized attachment. */
 export interface NormalizationPolicy {
@@ -113,6 +113,47 @@ export async function normalizeImage(
 ): Promise<NormalizedImage> {
   if (canPassThroughNormalization(detected, data.byteLength, policy)) {
     return { data, mediaType: detected.mediaType, width: detected.width, height: detected.height }
+  }
+  // Linux worker 路径：通过独立 Node 子进程完成编码，避免 GTK 符号碰撞
+  if (shouldUseSharpWorker()) {
+    try {
+      const { width, height } = initialDimensions(detected, policy)
+      const mediaType = detected.hasAlpha ? 'image/webp' : 'image/jpeg'
+      // 按质量阶梯依次尝试
+      const worker = getSharpWorker()
+      for (const quality of [85, 75, 60]) {
+        const result = await worker.encode(data, {
+          format: mediaType === 'image/webp' ? 'webp' : 'jpeg',
+          quality,
+          resize: { width, height, fit: 'inside' },
+          normalize: true,
+        })
+        if (result.data.byteLength <= policy.maxBytes) {
+          return await verifyNormalizedImage(
+            { data: result.data, mediaType: mediaType as ImageMediaType, width: result.width, height: result.height },
+            detected.mediaType === 'image/gif' ? undefined : detected.hasAlpha,
+          )
+        }
+      }
+      // 所有质量都超标，返回最小的（quality=60）
+      const result = await worker.encode(data, {
+        format: mediaType === 'image/webp' ? 'webp' : 'jpeg',
+        quality: 60,
+        resize: { width, height, fit: 'inside' },
+        normalize: true,
+      })
+      return await verifyNormalizedImage(
+        { data: result.data, mediaType: mediaType as ImageMediaType, width: result.width, height: result.height },
+        detected.mediaType === 'image/gif' ? undefined : detected.hasAlpha,
+      )
+    } catch (error) {
+      if (error instanceof AttachmentError) throw error
+      throw new AttachmentError(
+        `The ${detected.depth} ${detected.mediaType.slice('image/'.length).toUpperCase()} could not be converted to the normalized 8-bit sRGB form.`,
+        'ATTACHMENT_WRITE_FAILED',
+        { cause: error },
+      )
+    }
   }
   const sharp = requireSharp()
   try {
