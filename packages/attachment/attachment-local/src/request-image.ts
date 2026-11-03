@@ -20,7 +20,7 @@ import {
   isExhaustedEncoding,
 } from './encoding.ts'
 import { detectImage, encodedAlphaIsCompatible, probeImage } from './image.ts'
-import { requireSharp } from './sharp.ts'
+import { requireSharp, shouldUseSharpWorker, getSharpWorker } from './sharp.ts'
 
 /** Transform version included in every cache and upload-index identity. */
 export const REQUEST_IMAGE_TRANSFORM_VERSION = 'request-image-v6'
@@ -108,6 +108,44 @@ async function createRequestImage(
       mediaType: attachment.ref.mediaType,
       width: attachment.ref.width,
       height: attachment.ref.height,
+    }
+  }
+  // Linux worker 路径：通过独立 Node 子进程完成编码
+  if (shouldUseSharpWorker()) {
+    const mediaType = hasAlpha ? 'image/webp' : 'image/jpeg'
+    const byWidth = attachment.ref.width >= attachment.ref.height
+    const resize = byWidth
+      ? { width: target.width, fit: 'inside' as const }
+      : { height: target.height, fit: 'inside' as const }
+    const worker = getSharpWorker()
+    for (const quality of IMAGE_ENCODING_QUALITIES) {
+      const result = await worker.encode(attachment.data, {
+        format: mediaType === 'image/webp' ? 'webp' : 'jpeg',
+        quality,
+        resize,
+        normalize: true,
+      })
+      if (result.data.byteLength <= target.maxBytes) {
+        return {
+          data: result.data,
+          mediaType: mediaType as ImageMediaType,
+          width: result.width,
+          height: result.height,
+        }
+      }
+    }
+    // 所有质量都超标，返回最小的
+    const result = await worker.encode(attachment.data, {
+      format: mediaType === 'image/webp' ? 'webp' : 'jpeg',
+      quality: 60,
+      resize,
+      normalize: true,
+    })
+    return {
+      data: result.data,
+      mediaType: mediaType as ImageMediaType,
+      width: result.width,
+      height: result.height,
     }
   }
   const encodedVersion = await encodeFirstWithinLimit(
