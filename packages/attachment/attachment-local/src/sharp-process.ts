@@ -53,25 +53,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
  * 独立 Node 不能读 asar，需要 app.asar.unpacked 路径。
  */
 function resolveWorkerScriptPath(): string {
-  // 开发模式：从 src/ 目录加载
-  const devPath = join(__dirname, 'sharp-worker.mjs')
-  if (existsSync(devPath)) return devPath
-
-  // 打包模式：lib/sharp-worker.mjs（编译后在 lib/ 目录）
-  const asarPath = join(__dirname, 'sharp-worker.mjs')
-  if (existsSync(asarPath)) {
-    // 将 app.asar 路径转换为 app.asar.unpacked 路径
-    // 独立 Node 二进制不能读 asar 文件
-    const unpackedPath = asarPath.replace(
-      /([\\/])app\.asar([\\/])/,
-      '$1app.asar.unpacked$2',
-    )
+  // 始终优先使用 unpacked 路径：spawn 的独立 Node 不支持 asar，
+  // 而 Host (Electron) 会把 asar 内部路径视为存在（existsSync 返回 true），
+  // 导致直接返回 asar 路径，独立 Node 子进程无法读取而崩溃。
+  const raw = join(__dirname, 'sharp-worker.mjs')
+  if (/[\\/]app\.asar[\\/]/.test(raw)) {
+    const unpackedPath = raw.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2')
     if (existsSync(unpackedPath)) return unpackedPath
-    // 回退：如果 unpacked 不存在，返回 asar 路径（在 Electron 本身运行时可能有效）
-    return asarPath
   }
-
-  return asarPath
+  return raw
 }
 
 const workerScriptPath = resolveWorkerScriptPath()
