@@ -273,6 +273,10 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     // own window controls beside the caption menus.
     ...(process.platform === 'linux' && primary ? {
       titleBarStyle: 'hidden' as const,
+      // Linux: set the window icon so the taskbar/dock shows the app logo
+      // instead of a generic gear. The icon is a transparent-background PNG
+      // generated from the colorful SVG (website/public/favicon.svg).
+      icon: nativeImage.createFromPath(join(process.resourcesPath, 'icon.png')),
     } : {}),
     // hiddenInset places traffic lights inside the sidebar; sidebar vibrancy
     // needs a transparent window background to show through the page.
@@ -985,7 +989,7 @@ async function main(): Promise<void> {
     if (focusedOnVisible) return
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
-      : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
+      : (development ? join(app.getAppPath(), 'resources', 'icon-color.png') : join(process.resourcesPath, 'icon-color.png'))
     try {
       const sticky = desktopSettings.notifications.sticky[category] ?? false
       const notification = new Notification({ title, body, icon: iconPath, silent: false, timeoutType: sticky ? 'never' : 'default' })
@@ -1299,7 +1303,7 @@ async function main(): Promise<void> {
   const showTrayNotice = (body: string): void => {
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
-      : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
+      : (development ? join(app.getAppPath(), 'resources', 'icon-color.png') : join(process.resourcesPath, 'icon-color.png'))
     try {
       new Notification({ title: locale.messages.aboutProduct, body, icon: iconPath, silent: true }).show()
     } catch (error) {
@@ -1329,9 +1333,14 @@ async function main(): Promise<void> {
     mainWindow.webContents.send(DESKTOP_IPC.notifyAction, target)
   }
   // Linux system trays require a raster icon; Windows uses its multi-size ICO.
+  // Linux tray icons: use theme-appropriate transparent PNGs generated from SVG.
+  // Light theme → dark icon (apps/web/public/favicon.svg, black #000)
+  // Dark theme → light icon (apps/web/public/favicon-dark.svg, white #fff)
   const trayIconPath = process.platform === 'win32'
     ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
-    : (development ? join(app.getAppPath(), 'resources', 'icon.png') : join(process.resourcesPath, 'icon.png'))
+    : (nativeTheme.shouldUseDarkColors
+      ? (development ? join(app.getAppPath(), 'resources', 'icon-light.png') : join(process.resourcesPath, 'icon-light.png'))
+      : (development ? join(app.getAppPath(), 'resources', 'icon-dark.png') : join(process.resourcesPath, 'icon-dark.png')))
   if (process.platform === 'win32' || process.platform === 'linux') {
     // The tray is the way back to a hidden window; without it, relaunching the application still focuses it.
     try {

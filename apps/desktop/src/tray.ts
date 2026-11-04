@@ -1,6 +1,6 @@
 /** System tray: the always-present way back to a hidden window and the explicit quit entry (Windows and Linux). */
 
-import { Menu, nativeImage, Tray, type NativeImage } from 'electron'
+import { Menu, nativeImage, nativeTheme, Tray, type NativeImage } from 'electron'
 import type { DesktopLocale } from './locale.ts'
 
 /**
@@ -50,25 +50,56 @@ export interface DesktopTrayOptions {
 /** Tray icon present for the whole run, not only while the window is hidden. */
 export class DesktopTray {
   private tray: Tray | undefined
-  private readonly normalIcon: NativeImage
-  private readonly dimIcon: NativeImage
+  private normalIcon: NativeImage
+  private dimIcon: NativeImage
   private flashTimer: ReturnType<typeof setInterval> | undefined
+  private readonly iconPath: string
+  private themeHandler: (() => void) | undefined
 
   /** @param options - Icon path, locale reader, and the open and quit actions. */
   constructor(private readonly options: DesktopTrayOptions) {
-    const sourceIcon = nativeImage.createFromPath(options.iconPath)
-    // On Linux, resize the tray icon to 48×48 to keep SNI D-Bus transfers
-    // small (a 1024² PNG is ~4 MB per pixmap). Tray icons render at 22-32 px
-    // so 48 is more than enough and prevents the DDE SNI host from choking.
-    const normalIcon = process.platform === 'linux'
-      ? (sourceIcon.getSize().width > 48 ? sourceIcon.resize({ width: 48, height: 48 }) : sourceIcon)
-      : sourceIcon
-    this.normalIcon = normalIcon
-    this.dimIcon = dimmed(normalIcon)
-    const tray = new Tray(normalIcon)
+    this.iconPath = options.iconPath
+    this.normalIcon = this.buildIcon(options.iconPath)
+    this.dimIcon = dimmed(this.normalIcon)
+    const tray = new Tray(this.normalIcon)
     this.tray = tray
     tray.on('click', () => { options.open() })
     this.relabel()
+
+    // Linux: follow system theme to switch between dark/light tray icons.
+    // The caller in main.ts already picks the right iconPath at startup; this
+    // listener keeps it in sync if the user toggles the theme at runtime.
+    if (process.platform === 'linux') {
+      this.themeHandler = () => { this.refreshThemeIcon() }
+      nativeTheme.on('updated', this.themeHandler)
+    }
+  }
+
+  /** Load an icon from path, resizing to 48×48 on Linux for small D-Bus transfers. */
+  private buildIcon(path: string): NativeImage {
+    const sourceIcon = nativeImage.createFromPath(path)
+    if (sourceIcon.isEmpty()) return sourceIcon
+    return process.platform === 'linux'
+      ? (sourceIcon.getSize().width > 48 ? sourceIcon.resize({ width: 48, height: 48 }) : sourceIcon)
+      : sourceIcon
+  }
+
+  /** Re-read the theme-appropriate icon and swap it into the tray. */
+  private refreshThemeIcon(): void {
+    // Rebuild from the same path; main.ts chose the path based on current theme.
+    // If the theme flipped, the caller would have used a different path at
+    // startup, but nativeTheme.shouldUseDarkValues may change at runtime.
+    // We re-evaluate by swapping the path suffix.
+    const isDark = nativeTheme.shouldUseDarkColors
+    const darkPath = this.iconPath.replace(/icon-(dark|light|color)\.png$/, 'icon-light.png')
+    const lightPath = this.iconPath.replace(/icon-(dark|light|color)\.png$/, 'icon-dark.png')
+    const newPath = isDark ? darkPath : lightPath
+    if (newPath === this.iconPath) return
+    const next = this.buildIcon(newPath)
+    if (next.isEmpty()) return
+    this.normalIcon = next
+    this.dimIcon = dimmed(next)
+    this.tray?.setImage(this.normalIcon)
   }
 
   /** Rebuild the tooltip and context menu in the current locale. */
@@ -129,6 +160,10 @@ export class DesktopTray {
   /** Remove the icon; called once the quit is confirmed so no dead icon outlives the process. */
   dispose(): void {
     this.stopFlash()
+    if (this.themeHandler !== undefined) {
+      nativeTheme.off('updated', this.themeHandler)
+      this.themeHandler = undefined
+    }
     const tray = this.tray
     this.tray = undefined
     tray?.destroy()

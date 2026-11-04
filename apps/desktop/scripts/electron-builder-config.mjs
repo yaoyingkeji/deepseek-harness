@@ -205,6 +205,15 @@ export function createElectronBuilderConfig(
     extraResources: [
       { from: buildPaths.runtime, to: 'runtime' },
       { from: fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url)), to: 'icon.png' },
+      // Linux: transparent-background PNGs generated from SVG.
+      // icon-color.png: colorful logo for notifications and window icon
+      // icon-dark.png: black logo for tray in light theme
+      // icon-light.png: white logo for tray in dark theme
+      ...(resolvedPlatform === 'linux' ? [
+        { from: fileURLToPath(new URL('../resources/icon-color.png', import.meta.url)), to: 'icon-color.png' },
+        { from: fileURLToPath(new URL('../resources/icon-dark.png', import.meta.url)), to: 'icon-dark.png' },
+        { from: fileURLToPath(new URL('../resources/icon-light.png', import.meta.url)), to: 'icon-light.png' },
+      ] : []),
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
       ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),
     ],
