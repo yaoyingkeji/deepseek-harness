@@ -21,32 +21,6 @@ import {
   scrubWindowsSigningEnvironment,
 } from './windows-sign.mjs'
 import { resolveDesktopAutoUpdateConfig } from './desktop-auto-update-environment.mjs'
-
-/** Environment variable overriding the Linux auto-update feed base URL. */
-export const DESKTOP_LINUX_UPDATE_ENV = 'DSH_DESKTOP_LINUX_UPDATE_URL'
-
-/** Chinese branch release notes embedded in the Linux update feed metadata. */
-export const LINUX_UPDATE_RELEASE_NOTES = `linux-package-official 分支更新
-
-官方上游构建版，仅注入 Linux 打包基建，功能与 deepseek-ai/deepseek-harness 一致。`
-
-/**
- * Resolve the Linux auto-update feed: the owner's stable GitHub release directory.
- * A fixed tag (not a versioned one) is used so every installed build always sees the
- * newest metadata; the workflow refreshes that release on each build.
- * @param {NodeJS.ProcessEnv} env - Packaging environment.
- * @param {string} version - Desktop semantic version (kept for diagnostics).
- * @returns {{ channel: 'nightly', publicUrl: string }} Linux updater feed.
- */
-export function resolveDesktopLinuxUpdateConfig(env, version) {
-  const url = env[DESKTOP_LINUX_UPDATE_ENV]?.trim()
-  return {
-    channel: 'nightly',
-    publicUrl: url === undefined || url === ''
-      ? 'https://github.com/yaoyingkeji/deepseek-harness/releases/download/linux-latest-official/'
-      : url,
-  }
-}
 import { resolveDesktopBuildCommit } from './desktop-build-commit.mjs'
 import { resolveDesktopBuildVersion } from './desktop-build-version.mjs'
 import { resolveDesktopPolicyEnvironment } from './desktop-policy-environment.mjs'
@@ -102,7 +76,10 @@ export function createElectronBuilderConfig(
   let dshDestination
   let windowsCode = []
   const unpack = ['**/*.{node,dylib,dll,so,exe}', '**/*.so.*', '**/spawn-helper', '**/@vscode/ripgrep-*/bin/rg',
-    `**/node_modules/@deepseek-ai/libreoffice-kit-${resolvedPlatform}-${resolvedArch}/**/*`]
+    `**/node_modules/@deepseek-ai/libreoffice-kit-${resolvedPlatform}-${resolvedArch}/**/*`,
+    // LaunchServices opens the Computer Use helper as an application, so every file of its bundles stays on disk.
+    // Both architectures ship: they form one notarized payload whose manifest staging verifies as a whole.
+    '**/node_modules/@deepseek-ai/dsh-experimental-cua-macos/native/bin/**/*']
   const windowsSigner = packagesWindows && !unsigned
     ? createWindowsTokenSigner({
         certificateFile: env.DSH_DESKTOP_WINDOWS_CER_FILE,
@@ -122,15 +99,12 @@ export function createElectronBuilderConfig(
   if (windowsSigner !== undefined) {
     installWindowsNsisBootstrapSigner({ sign: windowsSigner })
   }
+  const update = unsigned ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
   if (preparedRuntime !== undefined) buildPaths.dsh = preparedRuntime
   // electron-builder merges extraMetadata into the packaged manifest, so a build version here reaches
   // the artifact names, the update feed, and the installed app.getVersion() the updater compares against.
   const productVersion = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).version
-  const update = unsigned ? undefined : resolvedPlatform === 'linux'
-    ? resolveDesktopLinuxUpdateConfig(env, productVersion)
-    : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
   const buildVersion = resolveDesktopBuildVersion(env, productVersion)
-  if (update?.channel === 'latest' && buildVersion.includes('-')) throw new Error('desktop package: latest requires a stable version')
   const packaged = resolveDesktopBuildCommit(env)
   return {
     appId,
@@ -138,7 +112,7 @@ export function createElectronBuilderConfig(
     extraMetadata: {
       dshDesktopAppId: appId,
       dshDesktopUpdateChannel: update?.channel ?? 'nightly',
-      ...(policy === undefined || resolvedPlatform === 'linux' ? {} : { dshMandatoryUpdatePolicy: policy }),
+      ...(policy === undefined ? {} : { dshMandatoryUpdatePolicy: policy }),
       ...buildVersion === productVersion ? {} : { version: buildVersion },
       ...packaged === undefined ? {} : { dshBuildCommit: packaged.commit, dshBuildDirty: packaged.dirty },
     },
@@ -281,12 +255,8 @@ export function createElectronBuilderConfig(
       target: ['nsis'],
     },
     linux: {
-      icon: fileURLToPath(new URL('../resources/icon.png', import.meta.url)),
       category: 'Development',
-      maintainer: 'DeepSeek AI',
-      synopsis: 'Desktop shell for a bundled dsh runtime and external plugins',
-      executableName: 'deepseek-harness',
-      target: ['AppImage', 'deb'],
+      target: ['AppImage'],
     },
     nsis: {
       uninstallDisplayName: '${productName}',
