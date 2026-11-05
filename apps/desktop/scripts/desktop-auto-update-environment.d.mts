@@ -14,17 +14,10 @@ export type DesktopAutoUpdateTarget = 'mac-arm64' | 'mac-x64' | 'win-x64'
  */
 export function desktopLatestInstallerFilename(target: DesktopAutoUpdateTarget): string
 
-/**
- * Resolve the production website installer URL shared by approval, upload and purge.
- * @param target Supported Desktop target.
- * @returns Fixed production download URL.
- */
-export function desktopWebsiteInstallerUrl(target: DesktopAutoUpdateTarget): string
-
 /** Public updater URL and object prefixes for one release target. */
 export interface DesktopAutoUpdateConfig {
   readonly environment: DesktopAutoUpdateEnvironment
-  readonly channel: 'nightly' | 'stable'
+  readonly channel: 'nightly' | 'latest'
   readonly target: DesktopAutoUpdateTarget
   readonly origin: string
   readonly publicUrl: string
@@ -75,7 +68,7 @@ export function desktopBuildRecordFilename(target: DesktopAutoUpdateTarget): str
 export function desktopUpdateMetadataFilename(
   version: string,
   platform: NodeJS.Platform,
-  channel?: 'nightly' | 'stable',
+  channel?: 'nightly' | 'latest',
 ): string
 
 /**
@@ -111,7 +104,7 @@ export function resolveDesktopUploadConfig(
  * @param env Packaging settings.
  * @returns Validated channel.
  */
-export function resolveDesktopUpdateChannel(env: NodeJS.ProcessEnv): 'nightly' | 'stable'
+export function resolveDesktopUpdateChannel(env: NodeJS.ProcessEnv): 'nightly' | 'latest'
 
 /**
  * Read a required nonempty deployment setting.
