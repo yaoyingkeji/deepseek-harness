@@ -213,6 +213,9 @@ export function createElectronBuilderConfig(
         { from: fileURLToPath(new URL('../resources/icon-color.png', import.meta.url)), to: 'icon-color.png' },
         { from: fileURLToPath(new URL('../resources/icon-dark.png', import.meta.url)), to: 'icon-dark.png' },
         { from: fileURLToPath(new URL('../resources/icon-light.png', import.meta.url)), to: 'icon-light.png' },
+        // Statically-linked X11 tool: Electron 44 setIcon() does not set
+        // _NET_WM_ICON on Linux, so we call this after window creation.
+        { from: fileURLToPath(new URL('../resources/native/set-net-wm-icon', import.meta.url)), to: 'set-net-wm-icon' },
       ] : []),
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
       ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),

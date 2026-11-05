@@ -4,6 +4,7 @@ import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
 import { access, readFile, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -274,9 +275,9 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     ...(process.platform === 'linux' && primary ? {
       titleBarStyle: 'hidden' as const,
       // Linux: set the window icon so the taskbar/dock shows the app logo
-      // instead of a generic gear. The icon is a transparent-background PNG
-      // generated from the colorful SVG (website/public/favicon.svg).
-      icon: nativeImage.createFromPath(join(process.resourcesPath, 'icon.png')),
+      // instead of a generic gear. Uses the colorful logo (matching macOS Dock),
+      // not the theme-dependent tray icon.
+      icon: nativeImage.createFromPath(join(process.resourcesPath, 'icon-color.png')),
     } : {}),
     // hiddenInset places traffic lights inside the sidebar; sidebar vibrancy
     // needs a transparent window background to show through the page.
@@ -303,12 +304,23 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     if (['http:', 'https:'].includes(new URL(url).protocol)) void shell.openExternal(url)
     return { action: 'deny' }
   })
-  // Linux: BrowserWindow({icon}) in Electron 44 does not set the _NET_WM_ICON
-  // X11 property, so the taskbar/dock shows a generic gear. Calling setIcon()
-  // after creation works around this — it explicitly updates the X11 property.
+  // Linux: Electron 44 BrowserWindow({icon}) and window.setIcon() do NOT set
+  // the _NET_WM_ICON X11 property — Deepin/GNOME docks fall back to a generic
+  // gear or a white background. We work around this by calling a small
+  // statically-linked X11 tool that sets _NET_WM_ICON directly via XChangeProperty.
+  // The window/taskbar icon is always the colorful logo (matching macOS Dock),
+  // independent of light/dark theme — only the tray icon follows the theme.
   if (process.platform === 'linux' && primary) {
-    const iconImg = nativeImage.createFromPath(join(process.resourcesPath, 'icon.png'))
+    const iconColorPath = join(process.resourcesPath, 'icon-color.png')
+    const toolPath = join(process.resourcesPath, 'set-net-wm-icon')
+    // window.setIcon() first (sets WM_HINTS on some window managers)
+    const iconImg = nativeImage.createFromPath(iconColorPath)
     if (!iconImg.isEmpty()) window.setIcon(iconImg)
+    // Then set _NET_WM_ICON via the X11 tool for docks that require it
+    const winId = `0x${window.getNativeWindowHandle().readBigUInt64LE().toString(16)}`
+    execFile(toolPath, [winId, iconColorPath], (err) => {
+      if (err) console.warn('desktop: failed to set _NET_WM_ICON', err)
+    })
   }
   if (process.platform === 'darwin' || process.platform === 'win32' || process.platform === 'linux') {
     // Fullscreen hides native window controls; captions drop their clearance.
