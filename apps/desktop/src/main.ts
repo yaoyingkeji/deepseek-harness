@@ -310,17 +310,26 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
   // statically-linked X11 tool that sets _NET_WM_ICON directly via XChangeProperty.
   // The window/taskbar icon is always the colorful logo (matching macOS Dock),
   // independent of light/dark theme — only the tray icon follows the theme.
+  // XChangeProperty has a ~16 KB limit per request, so we resize the icon to
+  // 64×64 (16 KB) before passing it to the tool.
   if (process.platform === 'linux' && primary) {
     const iconColorPath = join(process.resourcesPath, 'icon-color.png')
     const toolPath = join(process.resourcesPath, 'set-net-wm-icon')
     // window.setIcon() first (sets WM_HINTS on some window managers)
     const iconImg = nativeImage.createFromPath(iconColorPath)
     if (!iconImg.isEmpty()) window.setIcon(iconImg)
-    // Then set _NET_WM_ICON via the X11 tool for docks that require it
-    const winId = `0x${window.getNativeWindowHandle().readBigUInt64LE().toString(16)}`
-    execFile(toolPath, [winId, iconColorPath], (err) => {
-      if (err) console.warn('desktop: failed to set _NET_WM_ICON', err)
-    })
+    // Then set _NET_WM_ICON via the X11 tool for docks that require it.
+    // Resize to 64×64 to stay under the XChangeProperty size limit.
+    const smallIcon = iconImg.isEmpty() ? iconImg : iconImg.resize({ width: 64, height: 64 })
+    const tmpIconPath = join(app.getPath('temp'), 'deepseek-harness-net-wm-icon.png')
+    if (!smallIcon.isEmpty()) {
+      void writeFile(tmpIconPath, smallIcon.toPNG()).then(() => {
+        const winId = `0x${window.getNativeWindowHandle().readBigUInt64LE().toString(16)}`
+        execFile(toolPath, [winId, tmpIconPath], (err) => {
+          if (err) console.warn('desktop: failed to set _NET_WM_ICON', err)
+        })
+      })
+    }
   }
   if (process.platform === 'darwin' || process.platform === 'win32' || process.platform === 'linux') {
     // Fullscreen hides native window controls; captions drop their clearance.
