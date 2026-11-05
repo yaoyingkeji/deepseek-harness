@@ -303,6 +303,13 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     if (['http:', 'https:'].includes(new URL(url).protocol)) void shell.openExternal(url)
     return { action: 'deny' }
   })
+  // Linux: BrowserWindow({icon}) in Electron 44 does not set the _NET_WM_ICON
+  // X11 property, so the taskbar/dock shows a generic gear. Calling setIcon()
+  // after creation works around this — it explicitly updates the X11 property.
+  if (process.platform === 'linux' && primary) {
+    const iconImg = nativeImage.createFromPath(join(process.resourcesPath, 'icon.png'))
+    if (!iconImg.isEmpty()) window.setIcon(iconImg)
+  }
   if (process.platform === 'darwin' || process.platform === 'win32' || process.platform === 'linux') {
     // Fullscreen hides native window controls; captions drop their clearance.
     const sendFullscreen = (): void => {
