@@ -24,6 +24,9 @@ export interface DesktopUpdatePresentation {
   readonly phase: 'idle' | 'checking' | 'available' | 'upstream_available' | 'no_release' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
   readonly version?: string
   readonly percent?: number
+  readonly transferred?: number
+  readonly total?: number
+  readonly bytesPerSecond?: number
   readonly failure?: DesktopUpdateFailureKind
   readonly configurationError?: DesktopChannelState['error']
 }

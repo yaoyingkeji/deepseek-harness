@@ -33,12 +33,12 @@ import { installDesktopFileDrag } from './file-drag.ts'
 import { installDesktopDirectoryPicker } from './directory-picker.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { DesktopBackendController } from './backend-controller.ts'
-import { DESKTOP_IPC, SCHEME, assertDesktopSender, type DesktopUpdateState } from './ipc.ts'
+import { DESKTOP_IPC, SCHEME, assertDesktopSender, type DesktopUpdateState, type DesktopChannelState, type DesktopChannelChangeResult } from './ipc.ts'
 import { readDeviceInfo } from './device-info.ts'
 import { desktopUpdateReadyConfirmation, formatDesktopMessage, resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
 import { claimDesktopSingleInstance } from './single-instance.ts'
 import { desktopUpdateChannel } from './update-channel.ts'
-import { DesktopUpdateCoordinator } from './update-coordinator.ts'
+import { DesktopUpdateCoordinator, UPSTREAM_REPO } from './update-coordinator.ts'
 import { prepareDesktopUpdateWindow } from './update-window.ts'
 import { DesktopCommandManager } from './command-management.ts'
 import { serveWebDocument, authenticateWebHost, forwardWebRequest, removeLegacyHostCookies } from './web-document.ts'
@@ -62,6 +62,8 @@ import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { readDesktopSettings, writeDesktopSettings, DESKTOP_NOTIFICATION_DEFAULTS, type DesktopCloseBehavior, type DesktopNotificationCategory, type DesktopNotificationSettings } from './settings.ts'
 import { readDesktopLocaleCache, writeDesktopLocaleCache } from './locale-cache.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
+import { DesktopUpdateSettings } from './update-settings.ts'
+import { isDesktopUpdateChannel } from './settings-file.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
@@ -793,6 +795,13 @@ async function main(): Promise<void> {
 
   const manifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
   const updateChannel = desktopUpdateChannel(manifest)
+  const updateSettings = new DesktopUpdateSettings(app.getPath('userData'), updateChannel)
+  // Load the persisted channel selection; fall back to the packaged default on any error.
+  let startupChannel = updateChannel
+  try {
+    const loaded = await updateSettings.load()
+    if (loaded.kind === 'ready') startupChannel = loaded.channel
+  } catch { /* use the packaged channel default */ }
   const updates = new DesktopUpdateCoordinator(
     publishUpdate,
     async () => {
@@ -850,7 +859,7 @@ async function main(): Promise<void> {
     },
     undefined, undefined, undefined,
     (success, reason) => { void track('desktop_upgrade_download_result', { is_success: success, ...reason === undefined ? {} : { error_reason: reason } }) },
-    updateChannel,
+    startupChannel,
   )
 
   const updateSchedule = new DesktopUpdateSchedule(updates, resolveDesktopUpdateScheduleConfig(process.env))
@@ -1011,6 +1020,45 @@ async function main(): Promise<void> {
   ipcMain.handle(DESKTOP_IPC.updatesOpen, async (event) => {
     assertProductSender(event)
     await openUpdatePrompt()
+  })
+
+  // Channel selection: persist, retire the old target, and re-check the selected feed.
+  const buildChannelState = (): DesktopChannelState => ({
+    channel: updates.selectedChannel,
+    packagedChannel: updateChannel,
+    changing: false,
+    ...(updates.configurationFailure !== undefined
+      ? { error: updates.configurationFailure === 'cleanup' ? 'cleanup' : 'read' as const }
+      : {}),
+  })
+  const publishChannelState = (state: DesktopChannelState): void => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.webContents.send(DESKTOP_IPC.updatesChannelChanged, state)
+    }
+  }
+  ipcMain.handle(DESKTOP_IPC.updatesChannelGet, (event) => {
+    assertProductSender(event)
+    return buildChannelState()
+  })
+  ipcMain.handle(DESKTOP_IPC.updatesChannelSet, async (event, channel: unknown) => {
+    assertProductSender(event)
+    if (!isDesktopUpdateChannel(channel)) {
+      const state = buildChannelState()
+      return { kind: 'failed' as const, state, reason: 'format' as const }
+    }
+    try {
+      const result = await updates.switchChannel(channel, () => updateSettings.save(channel))
+      const state = buildChannelState()
+      publishChannelState(state)
+      return { kind: result, state }
+    } catch (error) {
+      console.error('desktop update: channel switch failed', error)
+      const state = buildChannelState()
+      publishChannelState(state)
+      const reason: 'save' | 'format' | 'permission' | 'apply' | 'uncertain'
+        = error instanceof Error && error.message.includes('could not retire') ? 'apply' : 'save'
+      return { kind: 'failed' as const, state, reason }
+    }
   })
 
   // The close-button behavior preference is owned by the Electron shell settings.
@@ -1298,8 +1346,12 @@ async function main(): Promise<void> {
           return
         }
         if (state.phase === 'upstream_available') {
-          await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
-            message: formatDesktopMessage(locale.messages.updateUpstreamAvailable, { version: state.version ?? '', current: app.getVersion() }) })
+          const result = await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
+            message: formatDesktopMessage(locale.messages.updateUpstreamAvailable, { version: state.version ?? '', current: app.getVersion() }),
+            buttons: [locale.messages.updateUpstreamViewOnGithub, locale.messages.updateClose], cancelId: 1 })
+          if (result.response === 0) {
+            void shell.openExternal(`https://github.com/${UPSTREAM_REPO}/releases/latest`).catch(() => undefined)
+          }
           return
         }
         if (state.phase === 'ready' || (state.phase === 'error' && state.failedOperation === 'install')) {

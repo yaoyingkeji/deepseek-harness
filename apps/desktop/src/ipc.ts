@@ -71,6 +71,12 @@ export interface DesktopUpdateState {
   /** Main-owned diagnostics without subprocess output or credentials; hidden until expanded. */
   readonly technicalDetails?: string
   readonly percent?: number
+  /** Downloaded bytes so far, from the electron-updater progress event. */
+  readonly transferred?: number
+  /** Total bytes to download, from the electron-updater progress event. */
+  readonly total?: number
+  /** Download speed in bytes per second, from the electron-updater progress event. */
+  readonly bytesPerSecond?: number
   readonly failedOperation?: 'check' | 'download' | 'install' | 'configuration'
   /** Main-owned preparation cause; UI wording is selected by the active locale. */
   readonly preparationFailure?: DesktopUpdatePreparationFailureKind
@@ -102,6 +108,9 @@ export interface DesktopUpdatePresentation {
   readonly phase: DesktopUpdateState['phase']
   readonly version?: string
   readonly percent?: number
+  readonly transferred?: number
+  readonly total?: number
+  readonly bytesPerSecond?: number
   readonly failure?: DesktopUpdateFailureKind
   readonly configurationError?: DesktopChannelState['error']
 }

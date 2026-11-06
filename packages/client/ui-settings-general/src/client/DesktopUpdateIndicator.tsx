@@ -11,6 +11,14 @@ const BUSY_PHASES: ReadonlySet<DesktopUpdatePresentation['phase']> = new Set([
   'checking', 'downloading', 'verifying', 'installing',
 ])
 
+/** Format a byte count as a human-readable string (e.g. 12.3 MB). */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
 function updateCopy(state: DesktopUpdatePresentation, t: SettingsTranslate): { label: string; detail: string } {
   if (state.configurationError !== undefined) return { label: t('desktop.channel.unavailable'), detail: t(`desktop.update.configuration.${state.configurationError}`) }
   const labels: Readonly<Record<DesktopUpdatePresentation['phase'], string>> = {
@@ -51,7 +59,17 @@ function updateCopy(state: DesktopUpdatePresentation, t: SettingsTranslate): { l
     return { label, detail: failures[state.failure ?? 'install'] }
   }
   if (state.phase === 'downloading' && state.version !== undefined) {
-    return { label, detail: t('desktop.update.downloadDetail', { percent: state.percent ?? 0, version: state.version }) }
+    const parts: string[] = [`${state.percent ?? 0}%`]
+    if (state.transferred !== undefined && state.total !== undefined && state.total > 0) {
+      parts.push(`${formatBytes(state.transferred)} / ${formatBytes(state.total)}`)
+    }
+    if (state.bytesPerSecond !== undefined && state.bytesPerSecond > 0) {
+      parts.push(`${formatBytes(state.bytesPerSecond)}/s`)
+    }
+    const baseDetail = t('desktop.update.downloadDetail', { percent: state.percent ?? 0, version: state.version })
+    const stats = parts.slice(1).join(' · ')
+    const detail = stats === '' ? baseDetail : `${baseDetail}\n${stats}`
+    return { label: parts.join(' · '), detail }
   }
   return { label, detail: state.version === undefined
     ? label

@@ -2,7 +2,7 @@
 import type { DesktopUpdateFailureKind, DesktopUpdatePresentation, DesktopUpdateState } from './ipc.ts'
 import type { DesktopMessages } from './locale.ts'
 
-const NETWORK_FAILURE = /\b(?:ERR_CONNECTION_CLOSED|ERR_CONNECTION_RESET|ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ETIMEDOUT)\b/u
+const NETWORK_FAILURE = /\b(?:ERR_CONNECTION_CLOSED|ERR_CONNECTION_RESET|ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|fetch failed|network error)\b/iu
 
 /**
  * Classify one updater failure for both native and Web-localized summaries.
@@ -55,6 +55,9 @@ export function presentDesktopUpdate(state: DesktopUpdateState): DesktopUpdatePr
     phase: state.phase,
     ...(state.version === undefined ? {} : { version: state.version }),
     ...(state.percent === undefined ? {} : { percent: Math.floor(state.percent) }),
+    ...(state.transferred === undefined ? {} : { transferred: state.transferred }),
+    ...(state.total === undefined ? {} : { total: state.total }),
+    ...(state.bytesPerSecond === undefined ? {} : { bytesPerSecond: state.bytesPerSecond }),
     ...(state.phase === 'error' ? { failure: desktopUpdateFailureKind(state) } : {}),
   }
 }

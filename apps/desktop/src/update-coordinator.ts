@@ -14,8 +14,16 @@ import { discardDesktopUpdate } from './updates/electron-updater/discard.ts'
 
 const { autoUpdater } = electronUpdater
 
+/** Network error patterns from electron-updater / Node fetch failures. */
+const NETWORK_ERROR = /\b(?:ERR_CONNECTION_CLOSED|ERR_CONNECTION_RESET|ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|fetch failed|network error)\b/iu
+
+function isNetworkError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return NETWORK_ERROR.test(message)
+}
+
 /** Upstream repo for fallback version checks when the branch feed has no newer build. */
-const UPSTREAM_REPO = 'deepseek-ai/deepseek-harness'
+export const UPSTREAM_REPO = 'deepseek-ai/deepseek-harness'
 const FALLBACK_HTTP_TIMEOUT_MS = 15_000
 const UPSTREAM_CACHE_TTL_MS = 30 * 60_000
 
@@ -45,24 +53,30 @@ export function desktopUpdateReleaseNotes(updateInfo: UpdateInfo): string | unde
 
 /**
  * Query the upstream GitHub repository for its latest release tag version.
- * Returns the tag name without the leading "dsh-" prefix when it's a dsh-*
+ * Returns the tag name without the leading "dsh-v" prefix when it's a dsh-*
  * tag, otherwise returns the full tag name. Results are cached for 30 minutes
  * to stay well within the 60 req/hour unauthenticated GitHub API rate limit.
  * @returns Latest upstream version string, or undefined on any error.
  */
-let upstreamVersionCache: { value: string | undefined; expires: number } | undefined
+let upstreamVersionCache: { version: string | undefined; networkFailed: boolean; expires: number } | undefined
 
-async function fetchUpstreamLatestVersion(): Promise<string | undefined> {
+async function fetchUpstreamLatestVersion(): Promise<UpstreamCheckResult> {
   const now = Date.now()
   if (upstreamVersionCache !== undefined && upstreamVersionCache.expires > now) {
-    return upstreamVersionCache.value
+    return { version: upstreamVersionCache.version, networkFailed: upstreamVersionCache.networkFailed }
   }
-  const value = await fetchUpstreamLatestVersionLive()
-  upstreamVersionCache = { value, expires: now + UPSTREAM_CACHE_TTL_MS }
-  return value
+  const result = await fetchUpstreamLatestVersionLive()
+  upstreamVersionCache = { version: result.version, networkFailed: result.networkFailed, expires: now + UPSTREAM_CACHE_TTL_MS }
+  return result
 }
 
-async function fetchUpstreamLatestVersionLive(): Promise<string | undefined> {
+/** Result of a live upstream version check: either a version or a network failure flag. */
+interface UpstreamCheckResult {
+  readonly version: string | undefined
+  readonly networkFailed: boolean
+}
+
+async function fetchUpstreamLatestVersionLive(): Promise<UpstreamCheckResult> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FALLBACK_HTTP_TIMEOUT_MS)
   try {
@@ -75,15 +89,16 @@ async function fetchUpstreamLatestVersionLive(): Promise<string | undefined> {
         signal: controller.signal,
       },
     )
-    if (!response.ok) return undefined
+    if (!response.ok) return { version: undefined, networkFailed: false }
     const releases = await response.json() as { tag_name?: string }[]
-    if (!Array.isArray(releases) || releases.length === 0) return undefined
+    if (!Array.isArray(releases) || releases.length === 0) return { version: undefined, networkFailed: false }
     const release = releases[0]
-    if (release === undefined || typeof release.tag_name !== 'string') return undefined
+    if (release === undefined || typeof release.tag_name !== 'string') return { version: undefined, networkFailed: false }
     // Strip "dsh-v" prefix to get the semver: dsh-v0.2.3-alpha.1 → 0.2.3-alpha.1
-    return release.tag_name.startsWith('dsh-v') ? release.tag_name.slice(5) : release.tag_name
+    const version = release.tag_name.startsWith('dsh-v') ? release.tag_name.slice(5) : release.tag_name
+    return { version, networkFailed: false }
   } catch {
-    return undefined
+    return { version: undefined, networkFailed: true }
   } finally {
     clearTimeout(timer)
   }
@@ -107,7 +122,12 @@ export class DesktopUpdateCoordinator {
   private readonly onProgress = (progress: ProgressInfo): void => {
     if (this.downloadGeneration !== this.generation || this.downloadOperation === undefined || this.downloaded) return
     const percent = Math.min(100, Math.max(0, progress.percent))
-    this.setState({ phase: percent >= 100 ? 'verifying' : 'downloading', ...this.target(), percent })
+    this.setState({
+      phase: percent >= 100 ? 'verifying' : 'downloading', ...this.target(), percent,
+      ...(progress.transferred !== undefined ? { transferred: progress.transferred } : {}),
+      ...(progress.total !== undefined ? { total: progress.total } : {}),
+      ...(progress.bytesPerSecond !== undefined ? { bytesPerSecond: progress.bytesPerSecond } : {}),
+    })
   }
 
   private readonly onDownloaded = (info: UpdateInfo): void => {
@@ -339,6 +359,7 @@ export class DesktopUpdateCoordinator {
       if (!this.enabled()) throw new Error('desktop update: this application has no packaged update source')
       // Level 1: check the branch's own update feed
       let branchCheckFailed = false
+      let branchNetworkFailed = false
       try {
         const result = await this.updater.checkForUpdates()
         if (result !== null) {
@@ -352,17 +373,22 @@ export class DesktopUpdateCoordinator {
             return this.setState({ phase: 'available', version, ...(notes === undefined ? {} : { notes }) })
           }
         }
-      } catch (_branchError) {
+      } catch (branchError) {
         // Branch feed failed (e.g. no linux-latest tag published yet) — proceed to upstream
         branchCheckFailed = true
+        branchNetworkFailed = isNetworkError(branchError)
       }
       // Level 2: fall back to upstream GitHub releases
-      const upstreamVersion = await fetchUpstreamLatestVersion()
-      if (upstreamVersion !== undefined && gt(upstreamVersion, this.currentVersion())) {
-        return this.setState({ phase: 'upstream_available', version: upstreamVersion })
+      const upstream = await fetchUpstreamLatestVersion()
+      if (upstream.version !== undefined && gt(upstream.version, this.currentVersion())) {
+        return this.setState({ phase: 'upstream_available', version: upstream.version })
       }
       // Both branch and upstream have nothing newer
       this.release = { kind: 'none' }
+      // If both branch and upstream had network failures, report a network error
+      if (branchNetworkFailed && upstream.networkFailed) {
+        return this.setState(this.failure(new Error('desktop update: could not reach update server (network error)'), 'check'))
+      }
       if (branchCheckFailed) {
         return this.setState({ phase: 'no_release' })
       }
