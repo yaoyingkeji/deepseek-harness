@@ -40,20 +40,8 @@ export const DESKTOP_IPC = {
   updatesStatus: 'dsh-desktop:updates-status',
   updatesOpen: 'dsh-desktop:updates-open',
   updatesPresentation: 'dsh-desktop:updates-presentation',
-  windowCloseBehaviorGet: 'dsh-desktop:window-close-behavior-get',
-  windowCloseBehaviorSet: 'dsh-desktop:window-close-behavior-set',
-  notificationsGet: 'dsh-desktop:notifications-get',
-  notificationsSet: 'dsh-desktop:notifications-set',
-  notificationsReset: 'dsh-desktop:notifications-reset',
-  notify: 'dsh-desktop:notify',
-  notifyAction: 'dsh-desktop:notify-action',
-  setCurrentSession: 'dsh-desktop:set-current-session',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
-  windowMaximized: 'dsh-desktop:window-maximized',
-  windowMinimize: 'dsh-desktop:window-minimize',
-  windowToggleMaximize: 'dsh-desktop:window-toggle-maximize',
-  windowClose: 'dsh-desktop:window-close',
   windowsAppearance: 'dsh-desktop:windows-appearance',
   windowsMenu: 'dsh-desktop:windows-menu',
 } as const
@@ -62,10 +50,8 @@ export const DESKTOP_IPC = {
 export type DesktopUpdatePreparationFailureKind = 'stop-failed' | 'tasks-changed' | 'tasks-unavailable' | 'fullscreen-timeout'
 
 export interface DesktopUpdateState {
-  readonly phase: 'idle' | 'checking' | 'available' | 'upstream_available' | 'no_release' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
+  readonly phase: 'idle' | 'checking' | 'available' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
   readonly version?: string
-  /** Markdown release notes carried by the update feed, shown in the update prompt. */
-  readonly notes?: string
   readonly message?: string
   /** Main-owned diagnostics without subprocess output or credentials; hidden until expanded. */
   readonly technicalDetails?: string
@@ -93,8 +79,6 @@ export type DesktopUpdateFailureKind =
   | 'tasks-changed'
   | 'tasks-unavailable'
   | 'fullscreen-timeout'
-  | 'no-release'
-  | 'upstream-available'
 
 /** Semantic status content; actions open main-process confirmation dialogs only. */
 export interface DesktopUpdatePresentation {
@@ -103,31 +87,6 @@ export interface DesktopUpdatePresentation {
   readonly percent?: number
   readonly failure?: DesktopUpdateFailureKind
   readonly configurationError?: DesktopChannelState['error']
-}
-
-/** Close-button behavior: keep the app in the background tray or exit completely. */
-export type DesktopCloseBehavior = 'hide' | 'quit'
-
-/** Desktop notification categories configurable from the General settings. */
-export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'subagent' | 'credential' | 'remote' | 'session' | 'plugin' | 'schedule' | 'goal'
-
-/**
- * Resolved notification category switches plus focus, non-current-session
- * and tray-flash preferences. Category keys select which event kinds notify;
- * `focused` decides whether notifications also appear while the window has
- * focus (false = only while unfocused; true = always); `nonCurrentSession`
- * sends notifications even for non-current sessions; `trayFlash` makes the
- * tray icon flash on notifications.
- */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean; nonCurrentSession: boolean; trayFlash: boolean }
-
-/** Localized notification payload sent by the web client. */
-export interface DesktopNotifyInput {
-  readonly category: DesktopNotificationCategory
-  readonly title: string
-  readonly body: string
-  /** Session the notification belongs to; returned on notification click so the UI can surface its panel. */
-  readonly sessionId?: string
 }
 
 /** Product documents cannot supply update versions, package URLs, or installation authorization. */
@@ -149,35 +108,6 @@ export interface DshDesktopProductApi {
     open(): Promise<void>
     subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
   }
-  readonly closeBehavior: {
-    get(): Promise<DesktopCloseBehavior>
-    set(behavior: DesktopCloseBehavior): Promise<void>
-  }
-  /**
-   * Show a native desktop notification (approval requests, user questions,
-   * finished jobs) while the application window is not focused. Categories
-   * disabled in the General settings are filtered out here.
-   * @param input - Category plus localized title and body.
-   */
-  notify(input: DesktopNotifyInput): Promise<void>
-  readonly notifications: {
-    get(): Promise<DesktopNotificationSettings>
-    set(category: DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash' | `sticky:${DesktopNotificationCategory}`, enabled: boolean): Promise<void>
-    reset(): Promise<DesktopNotificationSettings>
-  }
-  /**
-   * Track which session is currently active in the UI, so non-current-session
-   * filtering can decide whether to suppress notifications for background tabs.
-   */
-  setCurrentSession(sessionId: string | undefined): Promise<void>
-  /**
-   * Subscribe to notification clicks. The shell focuses the window and then
-   * pushes the notification's session (when known) so the UI can surface its
-   * pending approval or question panel.
-   * @param listener - Receives the notification session id, or undefined.
-   * @returns unsubscribe function.
-   */
-  onNotifyAction(listener: (sessionId: string | undefined) => void): () => void
 }
 
 /** Scheme of Desktop-owned application documents. */
