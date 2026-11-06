@@ -66,6 +66,7 @@ export interface DesktopUpdateState {
   readonly technicalDetails?: string
   readonly percent?: number
   readonly failedOperation?: 'check' | 'download' | 'install'
+  readonly downloadFailure?: string
   /** Main-owned preparation cause; UI wording is selected by the active locale. */
   readonly preparationFailure?: DesktopUpdatePreparationFailureKind
 }
