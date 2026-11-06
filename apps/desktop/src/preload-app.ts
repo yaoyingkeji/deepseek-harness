@@ -103,6 +103,12 @@ function createProductApi(): DshDesktopProductApi {
 }
 
 if (location.protocol === `${SCHEME}:` && location.hostname === 'app') {
+  // Desktop notification click / tray open sends a sessionId the renderer
+  // should navigate to. The renderer never registered onNotifyAction, so we
+  // also dispatch a DOM event the workspace module listens for.
+  ipcRenderer.on(DESKTOP_IPC.notifyAction, (_event, sessionId: string | undefined) => {
+    window.dispatchEvent(new CustomEvent('dsh-desktop:notify-action', { detail: sessionId }))
+  })
   contextBridge.exposeInMainWorld('dshOnboarding', {
     hasApiKey: () => ipcRenderer.invoke(DESKTOP_IPC.onboardingApiKey) as Promise<boolean>,
     setActive: (active: boolean) => { ipcRenderer.send(DESKTOP_IPC.onboardingActive, active) },
