@@ -479,11 +479,11 @@ async function main(): Promise<void> {
   /** Track which session is currently shown in the UI. */
   let currentSessionId: string | undefined
   /**
-   * The session owning the most recent unread notification, so a tray click
-   * can open exactly that session (or the settings panel when none). Cleared
-   * when the user opens the window through the tray.
+   * Sessions with unread notifications, in arrival order, so a tray click or
+   * notification click opens the first pending session and successive clicks
+   * walk later ones. Cleared as the user opens each session.
    */
-  let unreadSessionId: string | undefined
+  let unreadSessionQueue: string[] = []
   let unreadPending = false
   /**
    * The operating system is ending the session: the quit skips its confirmation. Windows sets it
@@ -1002,7 +1002,7 @@ async function main(): Promise<void> {
     // This runs before the focus-redundancy check so the tray still blinks
     // for the visible session while the window is focused.
     unreadPending = true
-    if (sessionId !== undefined) unreadSessionId = sessionId
+    if (sessionId !== undefined && !unreadSessionQueue.includes(sessionId)) unreadSessionQueue.push(sessionId)
     if (desktopSettings.notifications.trayFlash) tray?.flash()
     // Focus mode: when "focused" is off (the default), the native popup for
     // the session the user is already looking at is redundant — the in-app
@@ -1031,7 +1031,10 @@ async function main(): Promise<void> {
           if (mainWindow.isMinimized()) mainWindow.restore()
           mainWindow.show()
           mainWindow.focus()
-          mainWindow.webContents.send(DESKTOP_IPC.notifyAction, sessionId)
+          // Pop the first pending session so successive clicks walk later ones.
+          const target = sessionId ?? unreadSessionQueue.shift()
+          if (unreadSessionQueue.length === 0) { unreadPending = false; tray?.stopFlash() }
+          mainWindow.webContents.send(DESKTOP_IPC.notifyAction, target)
         } else {
           focusPrimaryWindow()
         }
@@ -1085,6 +1088,8 @@ async function main(): Promise<void> {
   ipcMain.handle(DESKTOP_IPC.notificationsReset, (event) => {
     assertProductSender(event)
     tray?.stopFlash()
+    unreadPending = false
+    unreadSessionQueue = []
     desktopSettings = {
       ...desktopSettings,
       notifications: { ...DESKTOP_NOTIFICATION_DEFAULTS },
@@ -1101,13 +1106,16 @@ async function main(): Promise<void> {
       throw new Error('desktop set-current-session: sessionId must be a string or undefined')
     }
     currentSessionId = sessionId
-    // If the user switched to the session that owned the most recent unread
-    // notification, the blink has served its purpose: stop flashing and clear
-    // the unread marker so the tray icon stays steady.
-    if (unreadPending && sessionId !== undefined && sessionId === unreadSessionId) {
-      tray?.stopFlash()
-      unreadPending = false
-      unreadSessionId = undefined
+    // If the user switched to a session that had unread notifications, remove
+    // it from the pending queue. When no pending sessions remain, the blink
+    // has served its purpose: stop flashing so the tray icon stays steady.
+    if (unreadPending && sessionId !== undefined) {
+      const index = unreadSessionQueue.indexOf(sessionId)
+      if (index !== -1) unreadSessionQueue.splice(index, 1)
+      if (unreadSessionQueue.length === 0) {
+        tray?.stopFlash()
+        unreadPending = false
+      }
     }
   })
 
@@ -1343,10 +1351,10 @@ async function main(): Promise<void> {
   // for session-less notices such as credential / remote-access requests).
   const openFromTray = (): void => {
     tray?.stopFlash()
-    const target = unreadSessionId
+    // Pop the first pending session so successive tray clicks walk later ones.
+    const target = unreadSessionQueue.shift()
     const pending = unreadPending
-    unreadPending = false
-    unreadSessionId = undefined
+    if (unreadSessionQueue.length === 0) unreadPending = false
     // Directly show and focus the window, bypassing focusPrimaryWindow's
     // enteredWorkspace guard: a tray click must always reveal the window
     // so the user can return to a hidden app or act on unread messages.
