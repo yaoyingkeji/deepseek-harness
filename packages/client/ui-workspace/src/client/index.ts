@@ -134,6 +134,18 @@ export function apply(ctx: Context): void {
     },
   })
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-workspace: dictionaries')
+  // Desktop notification click / tray open dispatches a DOM event carrying
+  // the sessionId to navigate to. The preload forwards the main-process IPC
+  // as `dsh-desktop:notify-action` so the workspace can open the session.
+  ctx.effect(() => {
+    if (typeof window === 'undefined') return () => {}
+    const handler = (event: Event): void => {
+      const sessionId = (event as CustomEvent<string | undefined>).detail
+      if (typeof sessionId === 'string' && sessionId.length > 0) uiWorkspace.openSession(sessionId)
+    }
+    window.addEventListener('dsh-desktop:notify-action', handler)
+    return () => { window.removeEventListener('dsh-desktop:notify-action', handler) }
+  }, 'ui-workspace: desktop notify-action listener')
   const shortcutControls = createWorkspaceShortcutControls()
 
   const searchSessions: WorkspaceBrowserInjected['searchSessions'] = async (query, signal) => {
