@@ -4,7 +4,7 @@ import type { FileSaveResult } from '@deepseek-ai/dsh-client-ui-file-actions/typ
 import type { DesktopChannelState, DesktopChannelChangeResult } from '@deepseek-ai/dsh-client-ui-settings-general/types'
 import type { DesktopShortcutInput, ShortcutConfigSnapshot, ShortcutSaveResult } from '@deepseek-ai/dsh-client-shortcuts/protocol'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { DESKTOP_IPC, SCHEME, type DesktopCloseBehavior, type DesktopNotificationSettings, type DshDesktopProductApi, type DesktopUpdatePresentation } from './ipc.ts'
+import { DESKTOP_IPC, SCHEME, type DshDesktopProductApi, type DesktopUpdatePresentation } from './ipc.ts'
 import { PLATFORM_IPC } from './platform-ipc.ts'
 import { markDocumentPlatform, syncWindowFullscreen } from './preload-platform.ts'
 import { syncNativeTheme } from './preload-theme.ts'
@@ -82,22 +82,6 @@ function createProductApi(): DshDesktopProductApi {
         ipcRenderer.on(DESKTOP_IPC.updatesPresentation, handle)
         return () => { ipcRenderer.off(DESKTOP_IPC.updatesPresentation, handle) }
       },
-    },
-    closeBehavior: {
-      get: () => ipcRenderer.invoke(DESKTOP_IPC.windowCloseBehaviorGet) as Promise<DesktopCloseBehavior>,
-      set: behavior => ipcRenderer.invoke(DESKTOP_IPC.windowCloseBehaviorSet, behavior) as Promise<void>,
-    },
-    notify: input => ipcRenderer.invoke(DESKTOP_IPC.notify, input) as Promise<void>,
-    notifications: {
-      get: () => ipcRenderer.invoke(DESKTOP_IPC.notificationsGet) as Promise<DesktopNotificationSettings>,
-      set: (category, enabled) => ipcRenderer.invoke(DESKTOP_IPC.notificationsSet, category, enabled) as Promise<void>,
-      reset: () => ipcRenderer.invoke(DESKTOP_IPC.notificationsReset) as Promise<DesktopNotificationSettings>,
-    },
-    setCurrentSession: (sessionId) => ipcRenderer.invoke(DESKTOP_IPC.setCurrentSession, sessionId) as Promise<void>,
-    onNotifyAction(listener) {
-      const handle = (_event: Electron.IpcRendererEvent, sessionId: string | undefined): void => { listener(sessionId) }
-      ipcRenderer.on(DESKTOP_IPC.notifyAction, handle)
-      return () => { ipcRenderer.off(DESKTOP_IPC.notifyAction, handle) }
     },
   }
 }
