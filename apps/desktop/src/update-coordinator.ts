@@ -316,24 +316,22 @@ export class DesktopUpdateCoordinator {
   private target(): { version?: string } {
     return this.candidate === undefined ? {} : { version: this.candidate }
   }
-
   private async doCheck(): Promise<DesktopUpdateState> {
-    const generation = this.generation
     try {
       this.assertLive()
       if (!this.enabled()) throw new Error('desktop update: this application has no packaged update source')
-      const result = await this.updater.checkForUpdates()
-      if (generation !== this.generation || this.disposed) return this.current
-      if (result === null) throw new Error('desktop update: no check result was returned')
-      this.cancellation = result.cancellationToken
-      const version = result.updateInfo.version
-      if (valid(version) === null) throw new Error('desktop update: feed version is invalid')
-      this.release = result.isUpdateAvailable && gt(version, this.currentVersion())
-        ? { kind: 'checked', version } : { kind: 'none' }
-      return this.setState(this.candidate === undefined ? { phase: 'idle' } : { phase: 'available', version })
-    } catch (error) {
-      if (generation !== this.generation || this.disposed) return this.current
-      return this.failure(error, 'check')
-    }
-  }
+      // Level 1: check the branch's own update feed
+      let branchCheckFailed = false
+      try {
+        const result = await this.updater.checkForUpdates()
+        if (result !== null) {
+          const version = result.updateInfo.version
+          if (valid(version) === null) throw new Error('desktop update: feed version is invalid')
+          if (this.channel === 'latest' && version.includes('-')) throw new Error('desktop update: latest feed contains a prerelease')
+          const hasBranchUpdate = result.isUpdateAvailable && gt(version, this.currentVersion())
+          if (hasBranchUpdate) {
+            const notes = desktopUpdateReleaseNotes(result.updateInfo)
+            this.candidate = version
+            return this.setState({ phase: 'available', version, ...(notes === undefined ? {} : { notes }) })
+          }  }
 }
