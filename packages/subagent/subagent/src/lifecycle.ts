@@ -69,7 +69,7 @@ export function createLifecycleEmitter(
           void Promise.resolve(returned).catch((error: unknown) => {
             ctx.logger.warn(`subagent: finished listener rejected: ${renderThrown(error)}`)
           })
-        } catch (error: unknown) => {
+        } catch (error: unknown) {
           ctx.logger.warn(`subagent: finished listener threw: ${renderThrown(error)}`)
         }
       }
