@@ -24,16 +24,3 @@ export async function readDesktopSettings(userData: string): Promise<DesktopSett
   }
   return { updates: { allowTestAuthPopupWindow: false } }
 }
-
-/**
- * Persist shell settings after a runtime change. The document is created or
- * replaced atomically enough for the single main process that owns it.
- * @param userData - Electron's userData directory, independent of DSH_HOME.
- * @param settings - Complete validated settings document to write.
- */
-export function writeDesktopSettings(userData: string, settings: DesktopSettings): void {
-  const directory = join(userData, 'desktop')
-  const path = join(directory, 'settings.json')
-  mkdirSync(directory, { recursive: true, mode: 0o700 })
-  writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 })
-}
