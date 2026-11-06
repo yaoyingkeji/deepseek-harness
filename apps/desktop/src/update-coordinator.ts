@@ -330,7 +330,7 @@ export class DesktopUpdateCoordinator {
           const hasBranchUpdate = result.isUpdateAvailable && gt(version, this.currentVersion())
           if (hasBranchUpdate) {
             const notes = desktopUpdateReleaseNotes(result.updateInfo)
-            this.candidate = version
+            this.release = { kind: 'checked', version }
             return this.setState({ phase: 'available', version, ...(notes === undefined ? {} : { notes }) })
           }
         }
@@ -344,7 +344,7 @@ export class DesktopUpdateCoordinator {
         return this.setState({ phase: 'upstream_available', version: upstreamVersion })
       }
       // Both branch and upstream have nothing newer
-      this.candidate = undefined
+      this.release = { kind: 'none' }
       if (branchCheckFailed) {
         return this.setState({ phase: 'no_release' })
       }
