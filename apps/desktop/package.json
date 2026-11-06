@@ -91,6 +91,5 @@
     "@deepseek-ai/dsh-util-file-drag": "workspace:*",
     "@deepseek-ai/dsh-client-ui-file-actions": "workspace:*",
     "tencentcloud-sdk-nodejs-teo": "4.1.330"
-  },
-  "homepage": "https://github.com/deepseek-ai/deepseek-harness"
+  }
 }
