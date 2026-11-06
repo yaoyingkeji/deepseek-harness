@@ -26,7 +26,7 @@ Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://de
 | **上游同步** | ✅ 已同步，0 commits behind |
 | **定制版 Linux 发行包**（`linux-custom-titlebar`） | ✅ `v0.2.2-alpha.2-linux-x64-custom` |
 | **官方版 Linux 发行包**（`linux-package-official`） | ✅ `v0.2.2-alpha.2-linux-x64-official` |
-| **自动更新源** | ✅ `linux-latest` → `v0.2.2-alpha.2-linux-x64-custom`<br>✅ `linux-latest-official` → `v0.2.2-alpha.2-linux-x64-official` |
+| **自动更新源** | ✅ `linux-latest` → `v0.2.2-rc.1-linux-x64-custom`<br>✅ `linux-latest-official` → `v0.2.2-rc.1-linux-x64-official` |
 
 > 本表在每次云端构建发布后由 GitHub Actions 自动刷新，无需手工维护。查看 [Actions 面板](https://github.com/yaoyingkeji/deepseek-harness/actions/workflows/384236203)。
 
