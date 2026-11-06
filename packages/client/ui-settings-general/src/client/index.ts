@@ -157,6 +157,7 @@ export function apply(ctx: ClientContext): void {
       ...(carrier?.protocolVersion === 1 && carrier.notifications !== undefined
         ? { bridge: carrier.notifications } : {}),
     }),
+  }, DesktopNotificationsRow))
   ctx.slots.inject('sidebar.toggle.badge', () => ctx.slots.register({
     name: 'sidebar.toggle.badge', locale: NS,
     inject: () => ({ hooks: { desktopUpdate: desktopUpdate.store, connectionState: connection.state } }),
