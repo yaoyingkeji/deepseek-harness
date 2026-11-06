@@ -988,19 +988,17 @@ async function main(): Promise<void> {
       throw new Error('desktop notify: sessionId must be a string')
     }
     if (!desktopSettings.notifications[category]) return
-    // Non-current-session filter: when off, notifications for sessions that
-    // are not the currently active tab are suppressed. Notifications without
-    // a sessionId always pass through. Default is ON.
-    const backgroundSession = !desktopSettings.notifications.nonCurrentSession
-      && sessionId !== undefined && currentSessionId !== undefined
-      && sessionId !== currentSessionId
-    if (backgroundSession) return
+    // Non-current-session notifications (e.g. an approval request in session A
+    // while the user is viewing session B) are always shown: they carry
+    // time-sensitive actions the user must act on, and suppressing them leaves
+    // the agent blocked with no visible cue. The tray blink and native popup
+    // both fire so the user is reliably alerted regardless of which tab is open.
     // The tray carries the unread state like QQ / WeChat: any notification
-    // that survives the category and session filters starts the blink and
-    // remembers its target session so a tray click jumps straight to that
-    // conversation (or the settings surface for session-less notices).
-    // This runs before the focus-redundancy check so the tray still blinks
-    // for the visible session while the window is focused.
+    // that survives the category filter starts the blink and remembers its
+    // target session so a tray click jumps straight to that conversation (or
+    // the settings surface for session-less notices). This runs before the
+    // focus-redundancy check so the tray still blinks for the visible session
+    // while the window is focused.
     unreadPending = true
     if (sessionId !== undefined && !unreadSessionQueue.includes(sessionId)) unreadSessionQueue.push(sessionId)
     if (desktopSettings.notifications.trayFlash) tray?.flash()
