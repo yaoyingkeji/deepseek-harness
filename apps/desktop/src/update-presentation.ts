@@ -40,8 +40,6 @@ export function desktopUpdateErrorSummary(state: DesktopUpdateState, messages: D
     'tasks-changed': messages.updateTasksChanged,
     'tasks-unavailable': messages.updateTasksUnavailable,
     'fullscreen-timeout': messages.updateFullscreenTimeout,
-    'no-release': messages.updateNoRelease,
-    'upstream-available': messages.updateUpstreamAvailable,
   }
   return summaries[kind]
 }
