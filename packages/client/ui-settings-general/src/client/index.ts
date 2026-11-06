@@ -146,6 +146,22 @@ export function apply(ctx: ClientContext): void {
     name: 'sidebar.toggle.badge', locale: NS,
     inject: () => ({ hooks: { desktopUpdate: desktopUpdate.store, connectionState: connection.state } }),
   }, DesktopUpdateBadge))
+  // The close-button behavior lives in the Electron shell settings; Web builds hide the row.
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item', id: 'close-behavior', order: 110, locale: NS,
+    inject: (): CloseWindowBehaviorRowInjected => ({
+      ...(carrier?.protocolVersion === 1 && carrier.closeBehavior !== undefined
+        ? { bridge: carrier.closeBehavior } : {}),
+    }),
+  }, CloseWindowBehaviorRow))
+  // Desktop notification category switches; Web builds hide the row.
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item', id: 'desktop-notifications', order: 120, locale: NS,
+    inject: (): DesktopNotificationsRowInjected => ({
+      ...(carrier?.protocolVersion === 1 && carrier.notifications !== undefined
+        ? { bridge: carrier.notifications } : {}),
+    }),
+  }, DesktopNotificationsRow))
 
   // Copy freshness is framework-owned: components read the standard `t`
   // seat, and the nav label is a thunk the owner resolves per render — no
