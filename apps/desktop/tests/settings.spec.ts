@@ -4,7 +4,7 @@ import * as fsp from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
-import { readDesktopSettings, writeDesktopSettings } from '../src/settings.ts'
+import { readDesktopSettings } from '../src/settings.ts'
 
 vi.mock('node:fs/promises', async importOriginal => ({ ...await importOriginal<typeof import('node:fs/promises')>() }))
 
