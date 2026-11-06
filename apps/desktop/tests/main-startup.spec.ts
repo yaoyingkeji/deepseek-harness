@@ -120,11 +120,6 @@ const harness = await vi.hoisted(async () => {
     readonly setFullScreen = vi.fn((flag: boolean) => { this.fullscreen = flag; this.emit(flag ? 'enter-full-screen' : 'leave-full-screen') })
     minimized = false
     isMinimized() { return this.minimized }
-    readonly minimize = vi.fn(() => { this.minimized = true })
-    maximized = false
-    isMaximized() { return this.maximized }
-    readonly maximize = vi.fn(() => { this.maximized = true; this.emit('maximize') })
-    readonly unmaximize = vi.fn(() => { this.maximized = false; this.emit('unmaximize') })
     visible = true
     isVisible() { return this.visible }
     isFocused() { return true }
@@ -139,11 +134,11 @@ const harness = await vi.hoisted(async () => {
     setBounds() {}
     setTitle = vi.fn()
     destroy() { this.destroyed = true; this.emit('closed') }
-    readonly close = vi.fn(() => {
+    close() {
       const event = { preventDefault: vi.fn() }
       this.emit('close', event)
       if (event.preventDefault.mock.calls.length === 0) this.destroy()
-    })
+    }
   }
   const views: FakeView[] = []
   class FakeView extends FakeWindow {
@@ -247,7 +242,6 @@ const harness = await vi.hoisted(async () => {
     get publishUpdate() { return publishUpdate! },
     set publishUpdate(value: (state: DesktopUpdateState) => DesktopUpdateState) { publishUpdate = value },
     dialog: { showOpenDialog: vi.fn(), showErrorBox: vi.fn(), showMessageBox: vi.fn() },
-    notificationShows: [] as string[],
     openExternal: vi.fn(async () => {}),
     showItemInFolder: vi.fn(),
     protocolHandle: vi.fn<(scheme: string, handler: (request: Request) => Response | Promise<Response>) => void>(),
@@ -334,11 +328,6 @@ vi.mock('electron', () => ({
   powerMonitor: harness.powerMonitor,
   Tray: harness.FakeTray,
   nativeImage: { createFromPath: (path: string) => ({ path }) },
-  Notification: class {
-    constructor(public readonly options: { title: string; body: string }) {}
-    readonly show = vi.fn(() => { harness.notificationShows.push(this.options.title) })
-    readonly on = vi.fn(() => this)
-  },
 }))
 vi.mock('../src/background-notice.ts', () => ({ DesktopBackgroundNotice: class {
   constructor(options: { markerPath: string }) { harness.backgroundNotice.markerPath = options.markerPath }
@@ -874,14 +863,8 @@ describe('desktop main startup', () => {
     const zh = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
       type: 'info', title: zh ? '关于 DeepSeek Harness' : 'About DeepSeek Harness', message: 'DeepSeek Harness',
-      detail: expect.stringContaining(zh ? '版本 V1.0.0' : 'Version V1.0.0'),
-      buttons: [zh ? '确定' : 'OK', zh ? '访问主页' : 'Visit Homepage'], cancelId: 0,
+      detail: zh ? '版本 V1.0.0' : 'Version V1.0.0', buttons: [zh ? '确定' : 'OK'], cancelId: 0,
     }))
-    // The homepage button opens the fork repository in the default browser.
-    harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 1 })
-    ;(about!.click as () => void)()
-    await vi.advanceTimersByTimeAsync(0)
-    expect(harness.openExternal).toHaveBeenLastCalledWith('https://github.com/yaoyingkeji/deepseek-harness')
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
     harness.dialog.showMessageBox.mockRejectedValueOnce(new Error('overlay unavailable'))
     ;(about!.click as () => void)()
@@ -1145,7 +1128,7 @@ describe('desktop main startup', () => {
     }
   })
 
-  it.each(['darwin', 'win32', 'linux'] as const)('applies caption titlebar styling on %s', async (platform) => {
+  it.each(['darwin', 'win32', 'linux'] as const)('limits native titlebar styling to macOS on %s', async (platform) => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -1161,9 +1144,8 @@ describe('desktop main startup', () => {
         { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
       ])
     } else {
-      expect(window.options).toMatchObject({ titleBarStyle: 'hidden' })
+      expect(window.options).not.toHaveProperty('titleBarStyle')
       expect(window.options).not.toHaveProperty('vibrancy')
-      expect(harness.menu.setApplicationMenu).toHaveBeenCalledWith(null)
     }
     expect(harness.hosts).toHaveLength(0)
   })
@@ -1180,7 +1162,7 @@ describe('desktop main startup', () => {
     expect((await handler(new Request('dsh-app://foreign/index.html'))).status).toBe(404)
   })
 
-  it.each(['darwin', 'win32', 'linux'] as const)('relays the %s fullscreen state on transitions and after each load', async (platform) => {
+  it.each(['darwin', 'win32'] as const)('relays the %s fullscreen state on transitions and after each load', async (platform) => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -1203,51 +1185,14 @@ describe('desktop main startup', () => {
     expect(sent()).toHaveLength(relayed)
   })
 
-  it('registers Linux caption window controls that drive the primary window', async () => {
-    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+  it.each(['linux'] as const)('registers no fullscreen relay on %s', async (platform) => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
     const window = harness.windows[0]!
-    const sender = window.webContents
-    const owned = { sender, senderFrame: sender.mainFrame }
-    const minimize = harness.handlers.get(DESKTOP_IPC.windowMinimize)!
-    const toggle = harness.handlers.get(DESKTOP_IPC.windowToggleMaximize)!
-    const close = harness.handlers.get(DESKTOP_IPC.windowClose)!
-    minimize(owned)
-    expect(window.minimize).toHaveBeenCalledOnce()
-    window.maximized = false
-    toggle(owned)
-    expect(window.maximize).toHaveBeenCalledOnce()
-    window.maximized = true
-    toggle(owned)
-    expect(window.unmaximize).toHaveBeenCalledOnce()
-    close(owned)
-    expect(window.close).toHaveBeenCalledOnce()
-  })
-
-  it('filters notifications while focused unless the focus-mode switch is on', async () => {
-    harness.notificationShows.length = 0
-    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
-    await import('../src/main.ts')
-    await harness.preparing.promise
-    const window = harness.windows[0]!
-    const owned = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
-    const notify = harness.handlers.get(DESKTOP_IPC.notify)!
-    const setNotifications = harness.handlers.get(DESKTOP_IPC.notificationsSet)!
-    const input = { category: 'approval' as const, title: 'Title', body: 'Body' }
-    // Focus mode defaults off; the mock window is focused, so the notification is suppressed.
-    expect(window.isFocused()).toBe(true)
-    notify(owned, input)
-    expect(harness.notificationShows).toHaveLength(0)
-    // Once the window loses focus, the same request reaches the native notification.
-    vi.spyOn(window, 'isFocused').mockReturnValue(false)
-    notify(owned, input)
-    expect(harness.notificationShows).toEqual(['Title'])
-    // Turning the focus-mode switch on restores focused notifications.
-    setNotifications(owned, 'focused', true)
-    vi.spyOn(window, 'isFocused').mockReturnValue(true)
-    notify(owned, input)
-    expect(harness.notificationShows).toEqual(['Title', 'Title'])
+    window.emit('enter-full-screen')
+    window.webContents.emit('did-finish-load')
+    expect(window.webContents.send.mock.calls.filter(([channel]) => channel === DESKTOP_IPC.windowFullscreen)).toHaveLength(0)
   })
 
   it('covers the macOS vibrancy reattach gap with an opaque base while minimized or hidden', async () => {
@@ -1387,12 +1332,6 @@ describe('desktop main startup', () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
-    if (platform !== 'darwin') {
-      // Linux draws its own caption menus and window controls inside the page,
-      // so the native application menu bar is suppressed entirely.
-      expect(harness.menu.setApplicationMenu).toHaveBeenCalledWith(null)
-      return
-    }
     const describeItem = (item: MenuItemConstructorOptions): string | undefined =>
       item.role ?? (item.type === 'separator' ? 'separator' : item.label)
     const template = harness.menu.buildFromTemplate.mock.calls
