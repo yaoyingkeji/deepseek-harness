@@ -141,7 +141,7 @@ export function apply(ctx: Context): void {
     if (typeof window === 'undefined') return () => {}
     const handler = (event: Event): void => {
       const sessionId = (event as CustomEvent<string | undefined>).detail
-      if (typeof sessionId === 'string' && sessionId.length > 0) uiWorkspace.openSession(sessionId)
+      if (typeof sessionId === 'string' && sessionId.length > 0) uiWorkspace.openSession(sessionId as SessionId)
     }
     window.addEventListener('dsh-desktop:notify-action', handler)
     return () => { window.removeEventListener('dsh-desktop:notify-action', handler) }
