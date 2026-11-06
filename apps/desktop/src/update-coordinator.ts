@@ -1,6 +1,7 @@
 /** User-authorized downloads and separate installation of one version-bound Desktop release. */
 
 import { existsSync } from 'node:fs'
+import type { DesktopUpdateChannel } from './settings.ts'
 import { join } from 'node:path'
 import { app } from 'electron'
 import electronUpdater, { type AppUpdater, type ProgressInfo, type UpdateInfo } from 'electron-updater'
@@ -111,7 +112,7 @@ export class DesktopUpdateCoordinator {
     private readonly enabled: () => boolean = () => updateSourceExists(),
     private readonly currentVersion: () => string = () => app.getVersion(),
     private readonly downloadResult?: (success: boolean, reason?: string) => void,
-    private readonly channel: 'nightly' | 'latest' = 'nightly',
+    private readonly channel: DesktopUpdateChannel = 'nightly',
   ) {
     if (updater === autoUpdater) {
       const transportOwner = updater as AppUpdater & { httpExecutor: DesktopUpdateHttpExecutor }
@@ -228,7 +229,7 @@ export class DesktopUpdateCoordinator {
         if (result !== null) {
           const version = result.updateInfo.version
           if (valid(version) === null) throw new Error('desktop update: feed version is invalid')
-          if (this.channel === 'latest' && version.includes('-')) throw new Error('desktop update: latest feed contains a prerelease')
+          if (this.channel === 'stable' && version.includes('-')) throw new Error('desktop update: latest feed contains a prerelease')
           const hasBranchUpdate = result.isUpdateAvailable && gt(version, this.currentVersion())
           if (hasBranchUpdate) {
             const notes = desktopUpdateReleaseNotes(result.updateInfo)
