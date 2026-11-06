@@ -213,6 +213,10 @@ jobs:
           | :---: | :---: |
           | ![测试原生引擎1](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-07-native-engine-test-1.png) | ![测试原生引擎2](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-08-native-engine-test-2.png) |
 
+          | 系统资源占用 |
+          | :---: |
+          | ![系统资源占用](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-09-system-resource.png) |
+
           #### 自动构建说明
 
           本分支每次推送代码即自动触发云端构建（README / docs 变更除外），构建成功后同时执行：
@@ -297,6 +301,10 @@ jobs:
           | Native Engine Test (1) | Native Engine Test (2) |
           | :---: | :---: |
           | ![Native Engine Test 1](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-07-native-engine-test-1.png) | ![Native Engine Test 2](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-08-native-engine-test-2.png) |
+
+          | System Resource Usage |
+          | :---: |
+          | ![System Resource Usage](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-09-system-resource.png) |
 
           #### Automatic Builds
 
@@ -516,6 +524,10 @@ jobs:
           | :---: | :---: |
           | ![测试原生引擎1](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-07-native-engine-test-1.png) | ![测试原生引擎2](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-08-native-engine-test-2.png) |
 
+          | 系统资源占用 |
+          | :---: |
+          | ![系统资源占用](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-09-system-resource.png) |
+
           ### 自动更新源
 
           此 Release 是 DeepSeek Harness Linux x64 **定制优化版** 的自动更新源。每次云端构建成功后，GitHub Actions 自动刷新此 Release 至最新版本。应用内「检查更新」即读取此页面的制品元数据判断是否有新版本。
@@ -568,6 +580,10 @@ jobs:
           | Native Engine Test (1) | Native Engine Test (2) |
           | :---: | :---: |
           | ![Native Engine Test 1](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-07-native-engine-test-1.png) | ![Native Engine Test 2](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-08-native-engine-test-2.png) |
+
+          | System Resource Usage |
+          | :---: |
+          | ![System Resource Usage](https://github.com/yaoyingkeji/deepseek-harness/raw/linux-custom-titlebar/docs/screenshots/linux-custom-titlebar/screenshot-09-system-resource.png) |
 
           ### Auto-Update Feed
 

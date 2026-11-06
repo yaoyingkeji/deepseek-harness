@@ -26,7 +26,7 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 | **上游同步** | ✅ 已同步，0 commits behind |
 | **定制版 Linux 发行包**（`linux-custom-titlebar`） | ✅ `v0.2.2-rc.2.20261116.450-linux-x64-custom` |
 | **官方版 Linux 发行包**（`linux-package-official`） | ✅ `v0.2.2-rc.2-linux-x64-official` |
-| **自动更新源** | ✅ `linux-latest` → `v0.2.2-rc.2.20261116.451-linux-x64-custom`<br>✅ `linux-latest-official` → `0.2.2-rc.2.20261116.451` |
+| **自动更新源** | ✅ `linux-latest` → `v0.2.2-rc.2.20261116.450-linux-x64-custom`<br>✅ `linux-latest-official` → `0.2.2-rc.2` |
 
 > 本表在每次云端构建发布后由 GitHub Actions 自动刷新，无需手工维护。查看 [Actions 面板](https://github.com/yaoyingkeji/deepseek-harness/actions/workflows/384236203)。
 
@@ -72,6 +72,10 @@ sudo dpkg -i deepseek-harness_*_amd64.deb
 | 测试原生引擎 libreoffice-kit-linux-x64（1） | 测试原生引擎 libreoffice-kit-linux-x64（2） |
 | :---: | :---: |
 | ![测试原生引擎1](docs/screenshots/linux-custom-titlebar/screenshot-07-native-engine-test-1.png) | ![测试原生引擎2](docs/screenshots/linux-custom-titlebar/screenshot-08-native-engine-test-2.png) |
+
+| 系统资源占用 |
+| :---: |
+| ![系统资源占用](docs/screenshots/linux-custom-titlebar/screenshot-09-system-resource.png) |
 
 ### `linux-package-official` — 官方上游版
 
