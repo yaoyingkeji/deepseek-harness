@@ -19,7 +19,6 @@ import type {} from '@deepseek-ai/dsh-schedule/client'
 import type {} from '@deepseek-ai/dsh-goal'
 import type {} from '@deepseek-ai/dsh-subagent'
 import type { TypertForwardableEventEntry } from '@deepseek-ai/dsh-typert-protocol'
-import type {} from '@deepseek-ai/dsh-web/types'
 
 /**
  * Host events this application forwards without renaming. The explicit mode is
@@ -64,5 +63,4 @@ export const API_REMOTE_FORWARDED_EVENTS = [
   { event: 'schedule/changed', mode: 'emit' },
   { event: 'schedule/reminder-delivered', mode: 'emit' },
   { event: 'user-questions/request', mode: 'waterfall' },
-  { event: 'web/providers-changed', mode: 'emit' },
 ] as const satisfies readonly TypertForwardableEventEntry[]

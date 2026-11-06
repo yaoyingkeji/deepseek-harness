@@ -12,9 +12,7 @@ const NETWORK_FAILURE = /\b(?:ERR_CONNECTION_CLOSED|ERR_CONNECTION_RESET|ERR_INT
 function desktopUpdateFailureKind(state: DesktopUpdateState): DesktopUpdateFailureKind {
   if (state.phase === 'no_release') return 'no-release'
   if (state.phase === 'upstream_available') return 'upstream-available'
-  if (state.failedOperation === 'configuration') return 'configuration'
   if (state.failedOperation === 'install' && state.preparationFailure !== undefined) return state.preparationFailure
-  if (state.failedOperation === 'download' && state.downloadFailure !== undefined) return `download-${state.downloadFailure}`
   const operation = state.failedOperation ?? 'install'
   return NETWORK_FAILURE.test(state.message ?? '') ? `${operation}-network` : operation
 }
@@ -28,13 +26,9 @@ function desktopUpdateFailureKind(state: DesktopUpdateState): DesktopUpdateFailu
 export function desktopUpdateErrorSummary(state: DesktopUpdateState, messages: DesktopMessages): string {
   const kind = desktopUpdateFailureKind(state)
   const summaries: Readonly<Record<DesktopUpdateFailureKind, string>> = {
-    configuration: messages.updateConfigurationFailed,
     check: messages.updateCheckFailed,
     'check-network': messages.updateCheckNetworkFailed,
     download: messages.updateDownloadFailed,
-    'download-space': messages.updateDownloadSpaceFailed,
-    'download-permission': messages.updateDownloadPermissionFailed,
-    'download-busy': messages.updateDownloadBusyFailed,
     'download-network': messages.updateDownloadNetworkFailed,
     install: messages.updateInstallFailed,
     'install-network': messages.updateInstallNetworkFailed,
