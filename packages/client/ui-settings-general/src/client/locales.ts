@@ -660,6 +660,19 @@ export const de = {
   'notifications.remoteHint': 'Benachrichtigung wenn eine Verbindungsanforderung von außerhalb dieses Rechners zugelassen wird; standardmäßig deaktiviert, um Störungen zu vermeiden',
   'notifications.session': 'New session',
   'notifications.sessionHint': 'Benachrichtigung wenn eine neue Sitzung erstellt wird (einschließlich Remote-Sitzungen); häufige Sitzungserstellung kann störend sein, standardmäßig deaktiviert',
+  'notifications.goal': 'Ziel-Statusänderungen',
+  'notifications.goalHint': 'Benachrichtigung wenn ein Ziel abgeschlossen oder blockiert ist',
+  'notifications.nonCurrentSession': 'Benachrichtigungen für nicht aktuelle Sitzung',
+  'notifications.nonCurrentSessionHint': 'Eingeschaltet zeigen auch Hintergrund-Sitzungen Benachrichtigungen an',
+  'notifications.plugin': 'Plugin-Vorgänge',
+  'notifications.pluginHint': 'Benachrichtigung bei Plugin-Installation oder -Fehler',
+  'notifications.restoreDefaults': 'Standardwerte wiederherstellen',
+  'notifications.schedule': 'Geplante Erinnerungen',
+  'notifications.scheduleHint': 'Benachrichtigung wenn eine geplante Aufgabe fällig ist',
+  'notifications.sticky': 'Manuell schließen',
+  'notifications.stickyHint': 'Wenn aktiviert, bleiben Benachrichtigungen dieser Kategorie geöffnet, bis sie angeklickt werden',
+  'notifications.trayFlash': 'Tray-Symbol blinken',
+  'notifications.trayFlashHint': 'Wenn aktiviert, blinkt das Tray-Symbol bei Benachrichtigungen alle 600ms',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
