@@ -315,8 +315,7 @@ export class DesktopUpdateCoordinator {
 
   private target(): { version?: string } {
     return this.candidate === undefined ? {} : { version: this.candidate }
-  }
-  private async doCheck(): Promise<DesktopUpdateState> {
+  }  private async doCheck(): Promise<DesktopUpdateState> {
     try {
       this.assertLive()
       if (!this.enabled()) throw new Error('desktop update: this application has no packaged update source')
@@ -327,11 +326,31 @@ export class DesktopUpdateCoordinator {
         if (result !== null) {
           const version = result.updateInfo.version
           if (valid(version) === null) throw new Error('desktop update: feed version is invalid')
-          if (this.channel === 'latest' && version.includes('-')) throw new Error('desktop update: latest feed contains a prerelease')
+          if (this.channel === 'stable' && version.includes('-')) throw new Error('desktop update: stable feed contains a prerelease')
           const hasBranchUpdate = result.isUpdateAvailable && gt(version, this.currentVersion())
           if (hasBranchUpdate) {
             const notes = desktopUpdateReleaseNotes(result.updateInfo)
             this.candidate = version
             return this.setState({ phase: 'available', version, ...(notes === undefined ? {} : { notes }) })
-          }  }
+          }
+        }
+      } catch (_branchError) {
+        // Branch feed failed (e.g. no linux-latest tag published yet) — proceed to upstream
+        branchCheckFailed = true
+      }
+      // Level 2: fall back to upstream GitHub releases
+      const upstreamVersion = await fetchUpstreamLatestVersion()
+      if (upstreamVersion !== undefined && gt(upstreamVersion, this.currentVersion())) {
+        return this.setState({ phase: 'upstream_available', version: upstreamVersion })
+      }
+      // Both branch and upstream have nothing newer
+      this.candidate = undefined
+      if (branchCheckFailed) {
+        return this.setState({ phase: 'no_release' })
+      }
+      return this.setState({ phase: 'idle' })
+    } catch (error) {
+      return this.failure(error, 'check')
+    }
+  }
 }
