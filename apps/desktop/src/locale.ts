@@ -188,6 +188,10 @@ export const en = {
   mandatoryCopyFailed: 'Could not copy the link. Select and copy it below.',
   mandatoryAddress: 'Download link',
   mandatoryNotification: 'Return to the application to confirm installation and restart.',
+  minimizeWindow: 'Minimize',
+  maximizeWindow: 'Maximize',
+  restoreWindow: 'Restore',
+  closeWindow: 'Close',
 } as const
 
 /** Every Desktop locale supplies the complete English key set. */
@@ -381,6 +385,10 @@ export const zh = {
   mandatoryCopyFailed: '复制失败，请手动选择并复制下方链接。',
   mandatoryAddress: '下载链接',
   mandatoryNotification: '返回应用确认安装并重启。',
+  minimizeWindow: '最小化',
+  maximizeWindow: '最大化',
+  restoreWindow: '还原',
+  closeWindow: '关闭',
 } as const satisfies DesktopMessages
 
 /** Japanese copy, checked against the English keys. */
@@ -572,6 +580,10 @@ export const ja = {
   mandatoryCopyFailed: 'リンクをコピーできませんでした。以下から選択してコピーしてください。',
   mandatoryAddress: 'ダウンロードリンク',
   mandatoryNotification: 'アプリに戻り、インストールと再起動を確認してください。',
+  minimizeWindow: '最小化',
+  maximizeWindow: '最大化',
+  restoreWindow: '元に戻す',
+  closeWindow: '閉じる',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -763,6 +775,10 @@ export const es = {
   mandatoryCopyFailed: 'No se pudo copiar el enlace. Selecciónelo y cópielo a continuación.',
   mandatoryAddress: 'Enlace de descarga',
   mandatoryNotification: 'Regrese a la aplicación para confirmar la instalación y reiniciar.',
+  minimizeWindow: 'Minimizar',
+  maximizeWindow: 'Maximizar',
+  restoreWindow: 'Restaurar',
+  closeWindow: 'Cerrar',
 } satisfies DesktopMessages
 
 /** French dictionary, checked against the English keys. */
@@ -954,6 +970,10 @@ export const fr = {
   mandatoryCopyFailed: 'Impossible de copier le lien. Sélectionnez-le et copiez-le ci-dessous.',
   mandatoryAddress: 'Lien de téléchargement',
   mandatoryNotification: "Revenez à l'application pour confirmer l'installation et redémarrer.",
+  minimizeWindow: 'Réduire',
+  maximizeWindow: 'Agrandir',
+  restoreWindow: 'Restaurer',
+  closeWindow: 'Fermer',
 } satisfies DesktopMessages
 
 /** German dictionary, checked against the English keys. */
@@ -1145,6 +1165,10 @@ export const de = {
   mandatoryCopyFailed: 'Der Link konnte nicht kopiert werden. Wählen Sie es aus und kopieren Sie es unten.',
   mandatoryAddress: 'Download-Link',
   mandatoryNotification: 'Kehren Sie zur Anwendung zurück, um die Installation zu bestätigen und neu zu starten.',
+  minimizeWindow: 'Minimieren',
+  maximizeWindow: 'Maximieren',
+  restoreWindow: 'Wiederherstellen',
+  closeWindow: 'Schließen',
 } satisfies DesktopMessages
 
 /** Russian dictionary, checked against the English keys. */
@@ -1336,6 +1360,10 @@ export const ru = {
   mandatoryCopyFailed: 'Не удалось скопировать ссылку. Выделите и скопируйте его ниже.',
   mandatoryAddress: 'Ссылка для скачивания',
   mandatoryNotification: 'Вернитесь в приложение, чтобы подтвердить установку и перезапустить.',
+  minimizeWindow: 'Свернуть',
+  maximizeWindow: 'Развернуть',
+  restoreWindow: 'Восстановить',
+  closeWindow: 'Закрыть',
 } satisfies DesktopMessages
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -1527,6 +1555,10 @@ export const pt = {
   mandatoryCopyFailed: 'Não foi possível copiar o link. Selecione e copie abaixo.',
   mandatoryAddress: 'Link de download',
   mandatoryNotification: 'Retorne ao aplicativo para confirmar a instalação e reinicie.',
+  minimizeWindow: 'Minimizar',
+  maximizeWindow: 'Maximizar',
+  restoreWindow: 'Restaurar',
+  closeWindow: 'Fechar',
 } satisfies DesktopMessages
 
 const dictionaries = { en, zh, ja, es, fr, de, ru, pt }
