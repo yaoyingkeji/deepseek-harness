@@ -19,6 +19,29 @@ document.addEventListener('keydown', event => {
   event.preventDefault()
   controls[next].focus()
 })
+// Renders detail text with http(s) URLs as clickable links that open in the
+// default browser via IPC; built with DOM APIs (no innerHTML) to prevent injection.
+// Newlines are preserved as text so textContent stays intact and CSS pre-wrap renders them.
+const urlPattern = /https?:\/\/[^\s]+/g
+function linkifyDetail(detail) {
+  const container = document.getElementById('detail')
+  container.replaceChildren()
+  if (detail === '') return
+  let lastIndex = 0
+  for (const match of detail.matchAll(urlPattern)) {
+    if (match.index > lastIndex) container.append(detail.slice(lastIndex, match.index))
+    const link = document.createElement('a')
+    link.textContent = match[0]
+    link.href = match[0]
+    link.addEventListener('click', (event) => {
+      event.preventDefault()
+      void api.openExternal(match[0])
+    })
+    container.append(link)
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < detail.length) container.append(detail.slice(lastIndex))
+}
 function render(state) {
   if (state === null) {
     responding = true
@@ -31,7 +54,7 @@ function render(state) {
   document.documentElement.lang = state.locale
   document.title = state.title
   document.getElementById('title').textContent = state.message
-  document.getElementById('detail').textContent = state.detail
+  linkifyDetail(state.detail)
   document.getElementById('detail').hidden = state.detail === ''
   document.getElementById('close').disabled = state.busyButton !== undefined
   document.getElementById('close').setAttribute('aria-label', state.closeLabel)

@@ -13,6 +13,8 @@ header { display: flex; align-items: flex-start; justify-content: space-between;
 main:focus { outline: none; }
 h1 { margin: 0; min-height: 28px; font-size: 16px; font-weight: 500; line-height: 24px; overflow-wrap: anywhere; }
 p { margin: 0; font-size: 14px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+p a { color: var(--dsw-alias-link); text-decoration: underline; cursor: pointer; }
+p a:hover { opacity: 0.8; }
 #actions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; position: sticky; bottom: 0; background: var(--dsw-alias-bg-layer-1); }
 button { min-height: 44px; padding: 9px 16px; border: 0; border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 22px; color: inherit; cursor: pointer; }
 .primary { background: var(--dsw-alias-button-primary-fill); color: var(--dsw-alias-label-primary-inverted); }

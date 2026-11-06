@@ -10,5 +10,6 @@ const api: UpdateDialogApi = {
     ipcRenderer.on(UPDATE_DIALOG_IPC.changed, receive)
     return () => { ipcRenderer.removeListener(UPDATE_DIALOG_IPC.changed, receive) }
   },
+  openExternal: (url) => ipcRenderer.invoke(UPDATE_DIALOG_IPC.openExternal, url) as Promise<void>,
 }
 if (location.href === 'dsh-app://shell/update-dialog.html') contextBridge.exposeInMainWorld('dshUpdateDialog', api)
