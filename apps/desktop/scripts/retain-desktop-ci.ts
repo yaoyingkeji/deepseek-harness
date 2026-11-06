@@ -34,6 +34,7 @@ export function desktopReleasesRoot(env: NodeJS.ProcessEnv): string {
  */
 export function resolveDesktopRetentionRunner(env: NodeJS.ProcessEnv): string {
   const target = resolveDesktopBuildTarget(env)
+  if (target === 'linux-x64') throw new Error('desktop retention: linux packages are not publish-retained')
   const routes = desktopPublishRunnersSchema.parse(JSON.parse(required(env, 'DESKTOP_PUBLISH_RUNNERS')))
   const route = routes[required(env, 'RUNNER_NAME')]
   if (!route || !route.target.includes(target)
@@ -51,6 +52,7 @@ export function resolveDesktopRetentionRunner(env: NodeJS.ProcessEnv): string {
  */
 export async function retainDesktopCi(env: NodeJS.ProcessEnv, appRoot = resolve(import.meta.dirname, '..')): Promise<string> {
   const target = resolveDesktopBuildTarget(env)
+  if (target === 'linux-x64') throw new Error('desktop retention: linux packages are not publish-retained')
   const runnerLabel = resolveDesktopRetentionRunner(env)
   const windows = target === 'win-x64'
   const platform = windows ? 'win32' : 'darwin'
