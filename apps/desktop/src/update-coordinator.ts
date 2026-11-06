@@ -1,7 +1,7 @@
 /** User-authorized downloads and separate installation of one version-bound Desktop release. */
 
 import { existsSync } from 'node:fs'
-import type { DesktopUpdateChannel } from './settings.ts'
+import type { DesktopUpdateChannel } from './update-channel.ts'
 import { join } from 'node:path'
 import { app } from 'electron'
 import electronUpdater, { type AppUpdater, type ProgressInfo, type UpdateInfo } from 'electron-updater'
