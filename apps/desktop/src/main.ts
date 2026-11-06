@@ -321,7 +321,8 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     const tmpIconPath = join(app.getPath('temp'), 'deepseek-harness-net-wm-icon.png')
     if (!sizedIcon.isEmpty()) {
       void writeFile(tmpIconPath, sizedIcon.toPNG()).then(() => {
-        const winId = `0x${window.getNativeWindowHandle().readBigUInt64LE().toString(16)}`
+        const handle = window.getNativeWindowHandle()
+        const winId = `0x${handle.length >= 8 ? handle.readBigUInt64LE().toString(16) : handle.readUInt32LE().toString(16)}`
         execFile(toolPath, [winId, tmpIconPath], (err) => {
           if (err) console.warn('desktop: failed to set _NET_WM_ICON', err)
         })
