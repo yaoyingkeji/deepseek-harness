@@ -7,14 +7,18 @@
  */
 
 import type {} from '@deepseek-ai/dsh-api-session-controller/remote-events'
+// Pulls the `connection/remote-requested` Cordis declaration into this face,
+// so the forwarded-event allowlist can carry it.
+import type {} from '@deepseek-ai/dsh-client-connection/src/remote-connection-request.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-deepseek-account/types'
 import type {} from '@deepseek-ai/dsh-permission-presets/types'
 import type {} from '@deepseek-ai/dsh-plugin-manager/types'
 import type {} from '@deepseek-ai/dsh-plugin-market/types'
 import type {} from '@deepseek-ai/dsh-schedule/client'
+import type {} from '@deepseek-ai/dsh-goal'
+import type {} from '@deepseek-ai/dsh-subagent'
 import type { TypertForwardableEventEntry } from '@deepseek-ai/dsh-typert-protocol'
-import type {} from '@deepseek-ai/dsh-web/types'
 
 /**
  * Host events this application forwards without renaming. The explicit mode is
@@ -27,17 +31,20 @@ import type {} from '@deepseek-ai/dsh-web/types'
 export const API_REMOTE_FORWARDED_EVENTS = [
   { event: 'agent-preset/selected', mode: 'emit' },
   { event: 'approval/request', mode: 'waterfall' },
+  { event: 'subagent/finished', mode: 'emit' },
   { event: 'api-session/activity', mode: 'emit', resources: { session: (sessionId): SessionId => sessionId } },
   { event: 'api-session/added', mode: 'emit', resources: { session: (summary): SessionId => summary.sessionId } },
   { event: 'api-session/error', mode: 'emit', resources: { session: (sessionId): SessionId => sessionId } },
   { event: 'api-session/removed', mode: 'emit', resources: { session: (sessionId): SessionId => sessionId } },
   { event: 'api-session/status', mode: 'emit', resources: { session: (sessionId): SessionId => sessionId } },
   { event: 'commands/change', mode: 'emit' },
+  { event: 'connection/remote-requested', mode: 'emit' },
   { event: 'deepseek-account/session-expired', mode: 'emit' },
   { event: 'deepseek-account/model-sign-in-required', mode: 'emit' },
   { event: 'credentials/record-updated', mode: 'emit' },
   { event: 'credentials/reference-updated', mode: 'emit' },
   { event: 'goal/activation-changed', mode: 'emit' },
+  { event: 'goal/completed-or-blocked', mode: 'emit' },
   { event: 'cordis/request-run', mode: 'emit' },
   { event: 'cordis/request-run-resolved', mode: 'emit' },
   { event: 'cordis/dynamic-package', mode: 'emit' },
@@ -54,6 +61,6 @@ export const API_REMOTE_FORWARDED_EVENTS = [
   { event: 'plugin-market/changed', mode: 'emit' },
   { event: 'settings/document-updated', mode: 'emit' },
   { event: 'schedule/changed', mode: 'emit' },
+  { event: 'schedule/reminder-delivered', mode: 'emit' },
   { event: 'user-questions/request', mode: 'waterfall' },
-  { event: 'web/providers-changed', mode: 'emit' },
 ] as const satisfies readonly TypertForwardableEventEntry[]

@@ -17,6 +17,7 @@
     {
       "path": "../gateway/tsconfig.host.json"
     },
+    { "path": "../../client/connection/tsconfig.host.json" },
     {
       "path": "../../core/session"
     },
@@ -81,9 +82,6 @@
       "path": "../../boot/plugin-manager"
     },
     {
-      "path": "../../mcp/mcp-manager"
-    },
-    {
       "path": "../../boot/plugin-market"
     },
     {
@@ -94,9 +92,6 @@
     },
     {
       "path": "../../credentials/deepseek-account"
-    },
-    {
-      "path": "../../web/web"
     }
   ]
 }

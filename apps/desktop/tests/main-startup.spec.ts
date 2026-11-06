@@ -22,10 +22,7 @@ type InvokeHandler = (event: InvokeEvent, ...args: unknown[]) => unknown
 const fileDrag = vi.hoisted(() => ({ dispose: vi.fn<() => Promise<void>>(), install: vi.fn() }))
 vi.mock('../src/file-drag.ts', () => ({ installDesktopFileDrag: () => { fileDrag.install(); return fileDrag.dispose } }))
 
-vi.mock('../src/web-document.ts', () => ({
-  authenticateWebHost: async () => 'test-cookie', serveWebDocument: vi.fn(), forwardWebRequest: vi.fn(),
-  removeLegacyHostCookies: harness.removeLegacyHostCookies,
-}))
+vi.mock('../src/web-document.ts', () => ({ authenticateWebHost: async () => 'test-cookie', serveWebDocument: vi.fn(), forwardWebRequest: vi.fn() }))
 vi.mock('../src/operation-report-job.ts', () => ({ runOperationReportJob: vi.fn(async () => ({ appended: false, timedOut: false, cancelled: false })) }))
 // Report persistence has its own unit tests; here it resolves within microtasks so the fatal
 // dialog never outlives the test that triggered it.
@@ -72,8 +69,8 @@ const harness = await vi.hoisted(async () => {
   })
   const loginShell = vi.fn((base: NodeJS.ProcessEnv, _config: unknown, _options: { signal?: AbortSignal }) => readLoginShell(base))
   const updateCheck = vi.fn(async (_manual?: boolean): Promise<DesktopUpdateState> => updateState)
-  const updateDownload = vi.fn(async (_version: string, _revision?: number): Promise<DesktopUpdateState> => updateState)
-  const updateInstall = vi.fn(async (_version: string, _revision?: number): Promise<DesktopUpdateState> => updateState)
+  const updateDownload = vi.fn(async (_version: string): Promise<DesktopUpdateState> => updateState)
+  const updateInstall = vi.fn(async (_version: string): Promise<DesktopUpdateState> => updateState)
   const popup = vi.fn<(options: { window: FakeWindow; x?: number; y?: number; callback?: () => void }) => void>()
   const menuBuilder = vi.fn<(template: MenuItemConstructorOptions[]) => { popup: typeof popup }>(() => ({ popup }))
   const menu = Object.assign(menuBuilder, { buildFromTemplate: menuBuilder, setApplicationMenu: vi.fn() })
@@ -120,6 +117,11 @@ const harness = await vi.hoisted(async () => {
     readonly setFullScreen = vi.fn((flag: boolean) => { this.fullscreen = flag; this.emit(flag ? 'enter-full-screen' : 'leave-full-screen') })
     minimized = false
     isMinimized() { return this.minimized }
+    readonly minimize = vi.fn(() => { this.minimized = true })
+    maximized = false
+    isMaximized() { return this.maximized }
+    readonly maximize = vi.fn(() => { this.maximized = true; this.emit('maximize') })
+    readonly unmaximize = vi.fn(() => { this.maximized = false; this.emit('unmaximize') })
     visible = true
     isVisible() { return this.visible }
     isFocused() { return true }
@@ -134,11 +136,11 @@ const harness = await vi.hoisted(async () => {
     setBounds() {}
     setTitle = vi.fn()
     destroy() { this.destroyed = true; this.emit('closed') }
-    close() {
+    readonly close = vi.fn(() => {
       const event = { preventDefault: vi.fn() }
       this.emit('close', event)
       if (event.preventDefault.mock.calls.length === 0) this.destroy()
-    }
+    })
   }
   const views: FakeView[] = []
   class FakeView extends FakeWindow {
@@ -218,8 +220,7 @@ const harness = await vi.hoisted(async () => {
     failWindow(error: Error) { windowFailure = error },
     windows, views, hosts, handlers, app, FakeWindow, FakeView, FakeHost, powerMonitor, nativeTheme, analytics,
     trays, FakeTray, backgroundNotice, shellDialog,
-    menu, popup, socketHeaders: vi.fn(), connectWelcome: vi.fn(), removeLegacyHostCookies: vi.fn(async () => {}), hostCookies: {},
-    loginShell, readLoginShell, updateCheck, updateDownload, updateInstall,
+    menu, popup, socketHeaders: vi.fn(), loginShell, readLoginShell, updateCheck, updateDownload, updateInstall,
     platformDispose,
     platformCloseAndWait,
 
@@ -242,8 +243,8 @@ const harness = await vi.hoisted(async () => {
     get publishUpdate() { return publishUpdate! },
     set publishUpdate(value: (state: DesktopUpdateState) => DesktopUpdateState) { publishUpdate = value },
     dialog: { showOpenDialog: vi.fn(), showErrorBox: vi.fn(), showMessageBox: vi.fn() },
+    notificationShows: [] as string[],
     openExternal: vi.fn(async () => {}),
-    showItemInFolder: vi.fn(),
     protocolHandle: vi.fn<(scheme: string, handler: (request: Request) => Response | Promise<Response>) => void>(),
     applyRelease: vi.fn(() => { preparing.resolve(); return prepared.promise }),
     disableAllPlugins: vi.fn(async () => {
@@ -309,8 +310,9 @@ vi.mock('electron', () => ({
   BrowserWindow: harness.FakeWindow,
   WebContentsView: harness.FakeView,
   dialog: harness.dialog,
-  shell: { openExternal: harness.openExternal, showItemInFolder: harness.showItemInFolder },
+  shell: { openExternal: harness.openExternal },
   nativeTheme: harness.nativeTheme,
+  net: { fetch: vi.fn() },
   ipcMain: {
     on: harness.ipcOn,
     handle: (channel: string, handler: InvokeHandler) => {
@@ -321,13 +323,18 @@ vi.mock('electron', () => ({
   },
   Menu: { setApplicationMenu: harness.menu.setApplicationMenu, buildFromTemplate: harness.menu },
   session: { defaultSession: {
-    on: vi.fn(), cookies: harness.hostCookies,
+    on: vi.fn(),
     setPermissionCheckHandler: vi.fn(), setPermissionRequestHandler: vi.fn(), webRequest: { onBeforeSendHeaders: harness.socketHeaders },
   } },
   protocol: { registerSchemesAsPrivileged: vi.fn(), handle: harness.protocolHandle },
   powerMonitor: harness.powerMonitor,
   Tray: harness.FakeTray,
   nativeImage: { createFromPath: (path: string) => ({ path }) },
+  Notification: class {
+    constructor(public readonly options: { title: string; body: string }) {}
+    readonly show = vi.fn(() => { harness.notificationShows.push(this.options.title) })
+    readonly on = vi.fn(() => this)
+  },
 }))
 vi.mock('../src/background-notice.ts', () => ({ DesktopBackgroundNotice: class {
   constructor(options: { markerPath: string }) { harness.backgroundNotice.markerPath = options.markerPath }
@@ -371,27 +378,9 @@ vi.mock('../src/update-dialog.ts', () => ({ DesktopUpdateDialog: class {
   dispose() {}
 } }))
 vi.mock('../src/update-coordinator.ts', () => ({ DesktopUpdateCoordinator: class {
-  selectedChannel: 'nightly' | 'stable' = 'nightly'
-  revision = 0
-  configurationFailure: 'startup' | 'cleanup' | undefined
-  constructor(publish: (state: DesktopUpdateState) => DesktopUpdateState, beforeRestart: () => Promise<boolean>,
-    _updater: unknown, _enabled: unknown, _version: unknown, _downloadResult: unknown, channel: 'nightly' | 'stable') {
-    this.selectedChannel = channel
+  constructor(publish: (state: DesktopUpdateState) => DesktopUpdateState, beforeRestart: () => Promise<boolean>) {
     harness.prepareUpdate = beforeRestart
     harness.publishUpdate = publish
-  }
-  async switchChannel(channel: 'nightly' | 'stable', persist: () => Promise<void>) {
-    await persist()
-    this.selectedChannel = channel
-    this.configurationFailure = undefined
-    this.revision++
-    harness.updateState = { phase: 'idle' }
-    return 'applied' as const
-  }
-  suspendConfiguration(detail: string, reason: 'startup' | 'cleanup' = 'startup') {
-    this.configurationFailure = reason
-    harness.updateState = { phase: 'error', failedOperation: 'configuration', message: detail }
-    harness.publishUpdate(harness.updateState)
   }
   get state() { return harness.updateState }
   readonly check = harness.updateCheck
@@ -411,17 +400,14 @@ vi.mock('../src/platform-view.ts', async importOriginal => ({
   },
 }))
 vi.mock('../src/welcome-backend.ts', () => ({
-  connectDesktopWelcome: (...args: unknown[]) => {
-    harness.connectWelcome(...args)
-    return {
-      analyticsEnabled: async () => harness.analyticsEnabled,
-      report: harness.analytics,
-      readLocalePreference: async () => null,
-      read: async (): Promise<unknown> => (await harness.hosts.at(-1)!.fetch()).json() as Promise<unknown>,
-      save: async () => ({ ok: true }),
-      account: { watch: harness.watchAccount, state: async () => ({ status: 'signed-out', attempt: null }) },
-    }
-  },
+  connectDesktopWelcome: async () => ({
+    analyticsEnabled: async () => harness.analyticsEnabled,
+    report: harness.analytics,
+    readLocalePreference: async () => null,
+    read: async (): Promise<unknown> => (await harness.hosts.at(-1)!.fetch()).json() as Promise<unknown>,
+    save: async () => ({ ok: true }),
+    account: { watch: harness.watchAccount, state: async () => ({ status: 'signed-out', attempt: null }) },
+  }),
 }))
 
 function configureTestAuthPopup(allow: boolean): void {
@@ -510,219 +496,6 @@ describe('desktop main startup', () => {
         : 'test-pnpm',
       nodeBin: packaged ? join('desktop-test-resources', 'runtime', 'bin') : join('desktop-test-app', 'scripts', 'node-bin'),
     })
-  })
-
-  it('persists a channel through product IPC and ignores external edits during the process', async () => {
-    configureTestAuthPopup(true)
-    await readyForUpdate()
-    expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).toMatchObject({ channel: 'nightly', changing: false })
-    expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toEqual({ kind: 'applied', state: { channel: 'stable', packagedChannel: 'nightly', changing: false } })
-    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ updates: { allowTestAuthPopupWindow: true, channel: 'stable' } })
-    writeFileSync(path, JSON.stringify({ updates: { channel: 'nightly' } }))
-    expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).toMatchObject({ channel: 'stable' })
-    expect(harness.windows[0]!.webContents.send).toHaveBeenCalledWith(DESKTOP_IPC.updatesChannelChanged,
-      { channel: 'stable', packagedChannel: 'nightly', changing: false })
-    await expect(invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'alpha')).rejects.toThrow('unsupported channel')
-    expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).toMatchObject({ channel: 'stable' })
-  })
-
-  it('reports a corrupt document without replacing it or pretending a UI save succeeded', async () => {
-    await readyForUpdate()
-    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-    writeFileSync(path, '{broken')
-    expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toMatchObject({ kind: 'failed', reason: 'format', state: { channel: 'nightly', changing: false } })
-    expect(readFileSync(path, 'utf8')).toBe('{broken')
-    expect(await invoke(DESKTOP_IPC.updatesStatus, 'app')).not.toHaveProperty('configurationError')
-  })
-
-  it('applies a committed selection even when storage lock release fails', async () => {
-    await readyForUpdate()
-    const { DesktopSettingsFile, DesktopSettingsFileError } = await import('../src/settings-file.ts')
-    const save = vi.spyOn(DesktopSettingsFile.prototype, 'saveUpdates').mockRejectedValueOnce(
-      new DesktopSettingsFileError({ kind: 'write', operation: 'save', effect: 'written' }, '/settings.json'))
-    try {
-      expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toMatchObject({
-        kind: 'applied', state: { channel: 'stable', changing: false },
-      })
-      expect(save).toHaveBeenCalledTimes(1)
-    } finally { save.mockRestore() }
-  })
-
-  it('suspends updates after an uncertain save and leaves recovery explicit', async () => {
-    await readyForUpdate()
-    harness.updateState = { phase: 'ready', version: '1.0.1' }
-    const { DesktopUpdateSettings } = await import('../src/update-settings.ts')
-    const { DesktopSettingsFileError } = await import('../src/settings-file.ts')
-    const save = vi.spyOn(DesktopUpdateSettings.prototype, 'save').mockRejectedValueOnce(
-      new DesktopSettingsFileError({ kind: 'write', operation: 'save', effect: 'unknown' }, '/settings.json'))
-    try {
-      expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toMatchObject({
-        kind: 'failed', reason: 'uncertain', state: { channel: 'nightly', changing: false, error: 'read' },
-      })
-      expect(harness.updateState).toMatchObject({ phase: 'error', failedOperation: 'configuration' })
-      expect(harness.updateInstall).not.toHaveBeenCalled()
-      expect(save).toHaveBeenCalledTimes(1)
-      const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-      const disk = JSON.stringify({ updates: { channel: 'stable' }, keep: true })
-      writeFileSync(path, disk)
-      harness.dialog.showMessageBox.mockImplementationOnce(async (options: import('../src/update-dialog.ts').UpdateDialogOptions) => {
-        expect(await options.action!.run()).toBe(true)
-        return { response: 0 }
-      })
-      await invoke(DESKTOP_IPC.updatesOpen, 'app')
-      const recovered = await invoke(DESKTOP_IPC.updatesChannelGet, 'app')
-      expect(recovered).toMatchObject({ channel: 'stable', changing: false })
-      expect(recovered).not.toHaveProperty('error')
-      expect(readFileSync(path, 'utf8')).toBe(disk)
-      expect(save).toHaveBeenCalledTimes(1)
-    } finally { save.mockRestore() }
-  })
-
-  it('keeps the previous ready update installable after a channel save fails', async () => {
-    await readyForUpdate()
-    harness.updateState = { phase: 'ready', version: '1.0.1' }
-    writeFileSync(join(harness.app.getPath('userData'), 'desktop', 'settings.json'), '{broken')
-    await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')
-    await invoke(DESKTOP_IPC.updatesOpen, 'app')
-    expect(harness.updateInstall).toHaveBeenCalledWith('1.0.1', 0)
-  })
-
-  it('keeps startup channel errors visible and recovers after a valid UI selection', async () => {
-    configureTestAuthPopup(false)
-    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-    writeFileSync(path, JSON.stringify({ updates: { channel: 'unknown' } }))
-    await readyForUpdate()
-    expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).toMatchObject({ channel: null, error: 'channel' })
-    expect(harness.hosts).toHaveLength(1)
-    expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toEqual({ kind: 'applied', state: { channel: 'stable', packagedChannel: 'nightly', changing: false } })
-  })
-
-  it('keeps committed settings after apply failure and recovers through explicit reload', async () => {
-    await readyForUpdate()
-    const { DesktopUpdateCoordinator } = await import('../src/update-coordinator.ts')
-    vi.spyOn(DesktopUpdateCoordinator.prototype, 'switchChannel').mockImplementationOnce(async function (this: InstanceType<typeof DesktopUpdateCoordinator>, _channel, persist) {
-      await persist()
-      this.suspendConfiguration('cache retirement failed', 'cleanup')
-      throw new Error('cache retirement failed')
-    })
-    expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toMatchObject({
-      kind: 'failed', reason: 'apply', state: { channel: 'nightly', error: 'cleanup' },
-    })
-    expect(await invoke(DESKTOP_IPC.updatesStatus, 'app')).toMatchObject({ configurationError: 'cleanup' })
-    await invoke(DESKTOP_IPC.updatesOpen, 'app')
-    const options = harness.dialog.showMessageBox.mock.lastCall![0] as import('../src/update-dialog.ts').UpdateDialogOptions
-    expect(options.message).toBe(en.updateConfigurationCleanup)
-    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-    expect(options.detail).toBe(path)
-    const saved = readFileSync(path, 'utf8')
-    expect(JSON.parse(saved)).toMatchObject({ updates: { channel: 'stable' } })
-    expect(await options.action!.run()).toBe(true)
-    expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).toMatchObject({ channel: 'stable', changing: false })
-    expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).not.toHaveProperty('error')
-    expect(readFileSync(path, 'utf8')).toBe(saved)
-  })
-
-  it('recovers invalid settings from the mandatory block without bypassing that block', async () => {
-    configureTestAuthPopup(false)
-    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-    writeFileSync(path, '{broken')
-    harness.embeddedPolicy = { origin: 'https://policy.example.com', allowedPageOrigins: ['https://downloads.example.com'] }
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async () => Response.json({ code: 40005,
-      data: { show_content: { title: 'Update', detail: 'Required' }, desktop_app_link: 'https://downloads.example.com/' } })))
-    await readyForUpdate()
-    await harness.policyBlocked.promise
-    const modal = harness.windows[0]!
-    const owned = { sender: modal.webContents, senderFrame: modal.webContents.mainFrame }
-    harness.dialog.showMessageBox.mockImplementationOnce(async (options: import('../src/update-dialog.ts').UpdateDialogOptions) => {
-      options.keepOpenAction!.run()
-      return { response: 2 }
-    })
-    await harness.handlers.get(MANDATORY_IPC.action)!(owned, 'refresh')
-    expect(harness.showItemInFolder).toHaveBeenCalledWith(path)
-    expect(harness.updateDownload).not.toHaveBeenCalled()
-    harness.dialog.showMessageBox.mockImplementationOnce(async (options: import('../src/update-dialog.ts').UpdateDialogOptions) => {
-      expect(options.detail).toBe(path)
-      expect(await options.action!.run()).toBe(false)
-      writeFileSync(path, JSON.stringify({ updates: { channel: 'stable' } }))
-      expect(await options.action!.run()).toBe(true)
-      return { response: 0 }
-    })
-    await harness.handlers.get(MANDATORY_IPC.action)!(owned, 'refresh')
-    expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).toMatchObject({ channel: 'stable' })
-    expect(harness.handlers.get(MANDATORY_IPC.status)!(owned)).toMatchObject({ policy: { blocking: true } })
-    expect(harness.updateDownload).not.toHaveBeenCalled()
-  })
-
-  it('checks mandatory policy immediately after a successful channel switch', async () => {
-    harness.embeddedPolicy = { origin: 'https://policy.example.com', allowedPageOrigins: ['https://downloads.example.com'] }
-    const checked = Promise.withResolvers<undefined>()
-    const request = vi.fn<typeof fetch>().mockImplementation(async (url, options) => {
-      if (url instanceof URL && url.searchParams.get('scenario') === 'channel-change') {
-        expect(new Headers(options?.headers).get('x-client-update-channel')).toBe('stable')
-        checked.resolve(undefined)
-      }
-      return Response.json({ code: 0, data: { biz_code: 0 } })
-    })
-    vi.stubGlobal('fetch', request)
-    await readyForUpdate()
-    expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toMatchObject({ kind: 'applied' })
-    await checked.promise
-  })
-
-  it('offers the actual settings file for malformed JSON without suggesting channel reselection', async () => {
-    configureTestAuthPopup(false)
-    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-    writeFileSync(path, '{broken')
-    await readyForUpdate()
-    harness.dialog.showMessageBox.mockImplementationOnce(async (options: import('../src/update-dialog.ts').UpdateDialogOptions) => {
-      options.keepOpenAction!.run()
-      return { response: 2 }
-    })
-    await invoke(DESKTOP_IPC.updatesOpen, 'app')
-    expect(harness.dialog.showMessageBox.mock.lastCall![0]).toMatchObject({
-      message: en.updateConfigurationFormat, detail: path,
-      buttons: [en.updateReloadSettings, en.updateShowSettingsFile, en.updateClose], cancelId: 2,
-    })
-    expect(en.updateConfigurationFormat).not.toContain('select')
-    expect(harness.showItemInFolder).toHaveBeenCalledWith(path)
-    expect(readFileSync(path, 'utf8')).toBe('{broken')
-  })
-
-  it('rereads a repaired file without writing it or restarting the shell', async () => {
-    configureTestAuthPopup(false)
-    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-    writeFileSync(path, '{broken')
-    await readyForUpdate()
-    harness.dialog.showMessageBox.mockImplementationOnce(async (options: import('../src/update-dialog.ts').UpdateDialogOptions) => {
-      expect(await options.action!.run()).toBe(false)
-      expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).toMatchObject({ error: 'format', changing: false })
-      const repaired = JSON.stringify({ updates: { channel: 'stable' }, retained: 'keep' })
-      writeFileSync(path, repaired)
-      expect(await options.action!.run()).toBe(true)
-      expect(readFileSync(path, 'utf8')).toBe(repaired)
-      return { response: 0 }
-    })
-    await invoke(DESKTOP_IPC.updatesOpen, 'app')
-    const state = await invoke(DESKTOP_IPC.updatesChannelGet, 'app')
-    expect(state).toMatchObject({ channel: 'stable', changing: false })
-    expect(state).not.toHaveProperty('error')
-  })
-
-  it('shows the invalid startup field and file path until a valid channel is applied', async () => {
-    configureTestAuthPopup(false)
-    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
-    writeFileSync(path, JSON.stringify({ updates: { channel: 'unknown' } }))
-    await readyForUpdate()
-    await invoke(DESKTOP_IPC.updatesOpen, 'app')
-    expect(harness.dialog.showMessageBox.mock.lastCall![0]).toMatchObject({
-      message: en.updateConfigurationChannel, detail: path,
-    })
-    writeFileSync(path, '{broken')
-    expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toMatchObject({
-      kind: 'failed', reason: 'format', state: { channel: null, error: 'channel' },
-    })
-    expect(await invoke(DESKTOP_IPC.updatesStatus, 'app')).toMatchObject({ configurationError: 'channel' })
   })
 
   it('starts the Host with authentication popups disabled when local settings are invalid', async () => {
@@ -863,8 +636,14 @@ describe('desktop main startup', () => {
     const zh = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
       type: 'info', title: zh ? '关于 DeepSeek Harness' : 'About DeepSeek Harness', message: 'DeepSeek Harness',
-      detail: zh ? '版本 V1.0.0' : 'Version V1.0.0', buttons: [zh ? '确定' : 'OK'], cancelId: 0,
+      detail: expect.stringContaining(zh ? '版本 V1.0.0' : 'Version V1.0.0'),
+      buttons: [zh ? '确定' : 'OK', zh ? '访问主页' : 'Visit Homepage'], cancelId: 0,
     }))
+    // The homepage button opens the fork repository in the default browser.
+    harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 1 })
+    ;(about!.click as () => void)()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(harness.openExternal).toHaveBeenLastCalledWith('https://github.com/yaoyingkeji/deepseek-harness')
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
     harness.dialog.showMessageBox.mockRejectedValueOnce(new Error('overlay unavailable'))
     ;(about!.click as () => void)()
@@ -1054,7 +833,7 @@ describe('desktop main startup', () => {
     await vi.advanceTimersByTimeAsync(0)
     harness.updateState = { phase: 'available', version: '1.0.1-nightly.1' }
     await invoke(DESKTOP_IPC.updatesOpen, 'app')
-    expect(harness.updateDownload).toHaveBeenCalledWith('1.0.1-nightly.1', 0)
+    expect(harness.updateDownload).toHaveBeenCalledWith('1.0.1-nightly.1')
     expect(testAuth.login).not.toHaveBeenCalled()
   })
 
@@ -1113,7 +892,7 @@ describe('desktop main startup', () => {
   it('accepts product IPC only from the current application top frame in the owned main window', async () => {
     await readyForUpdate()
     const sender = harness.windows[0]!.webContents
-    for (const channel of [DESKTOP_IPC.updatesStatus, DESKTOP_IPC.updatesChannelGet, DESKTOP_IPC.deviceInfo]) {
+    for (const channel of [DESKTOP_IPC.updatesStatus, DESKTOP_IPC.deviceInfo]) {
       const handler = harness.handlers.get(channel)!
       expect(() => handler({ sender, senderFrame: sender.mainFrame })).not.toThrow()
       for (const event of [
@@ -1128,7 +907,7 @@ describe('desktop main startup', () => {
     }
   })
 
-  it.each(['darwin', 'win32', 'linux'] as const)('limits native titlebar styling to macOS on %s', async (platform) => {
+  it.each(['darwin', 'win32', 'linux'] as const)('applies caption titlebar styling on %s', async (platform) => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -1144,8 +923,9 @@ describe('desktop main startup', () => {
         { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
       ])
     } else {
-      expect(window.options).not.toHaveProperty('titleBarStyle')
+      expect(window.options).toMatchObject({ titleBarStyle: 'hidden' })
       expect(window.options).not.toHaveProperty('vibrancy')
+      expect(harness.menu.setApplicationMenu).toHaveBeenCalledWith(null)
     }
     expect(harness.hosts).toHaveLength(0)
   })
@@ -1162,7 +942,7 @@ describe('desktop main startup', () => {
     expect((await handler(new Request('dsh-app://foreign/index.html'))).status).toBe(404)
   })
 
-  it.each(['darwin', 'win32'] as const)('relays the %s fullscreen state on transitions and after each load', async (platform) => {
+  it.each(['darwin', 'win32', 'linux'] as const)('relays the %s fullscreen state on transitions and after each load', async (platform) => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -1185,14 +965,51 @@ describe('desktop main startup', () => {
     expect(sent()).toHaveLength(relayed)
   })
 
-  it.each(['linux'] as const)('registers no fullscreen relay on %s', async (platform) => {
-    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
+  it('registers Linux caption window controls that drive the primary window', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
     await import('../src/main.ts')
     await harness.preparing.promise
     const window = harness.windows[0]!
-    window.emit('enter-full-screen')
-    window.webContents.emit('did-finish-load')
-    expect(window.webContents.send.mock.calls.filter(([channel]) => channel === DESKTOP_IPC.windowFullscreen)).toHaveLength(0)
+    const sender = window.webContents
+    const owned = { sender, senderFrame: sender.mainFrame }
+    const minimize = harness.handlers.get(DESKTOP_IPC.windowMinimize)!
+    const toggle = harness.handlers.get(DESKTOP_IPC.windowToggleMaximize)!
+    const close = harness.handlers.get(DESKTOP_IPC.windowClose)!
+    minimize(owned)
+    expect(window.minimize).toHaveBeenCalledOnce()
+    window.maximized = false
+    toggle(owned)
+    expect(window.maximize).toHaveBeenCalledOnce()
+    window.maximized = true
+    toggle(owned)
+    expect(window.unmaximize).toHaveBeenCalledOnce()
+    close(owned)
+    expect(window.close).toHaveBeenCalledOnce()
+  })
+
+  it('filters notifications while focused unless the focus-mode switch is on', async () => {
+    harness.notificationShows.length = 0
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    const window = harness.windows[0]!
+    const owned = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
+    const notify = harness.handlers.get(DESKTOP_IPC.notify)!
+    const setNotifications = harness.handlers.get(DESKTOP_IPC.notificationsSet)!
+    const input = { category: 'approval' as const, title: 'Title', body: 'Body' }
+    // Focus mode defaults off; the mock window is focused, so the notification is suppressed.
+    expect(window.isFocused()).toBe(true)
+    notify(owned, input)
+    expect(harness.notificationShows).toHaveLength(0)
+    // Once the window loses focus, the same request reaches the native notification.
+    vi.spyOn(window, 'isFocused').mockReturnValue(false)
+    notify(owned, input)
+    expect(harness.notificationShows).toEqual(['Title'])
+    // Turning the focus-mode switch on restores focused notifications.
+    setNotifications(owned, 'focused', true)
+    vi.spyOn(window, 'isFocused').mockReturnValue(true)
+    notify(owned, input)
+    expect(harness.notificationShows).toEqual(['Title', 'Title'])
   })
 
   it('covers the macOS vibrancy reattach gap with an opaque base while minimized or hidden', async () => {
@@ -1328,10 +1145,16 @@ describe('desktop main startup', () => {
     await edit
   })
 
-  it.each(['darwin', 'linux'] as const)('declares the platform application menus, with the product File, Edit, and Window menus on macOS (%s)', async (platform) => {
+  it.each(['darwin', 'linux'] as const)('adds the product File menu and standard window commands only on macOS (%s)', async (platform) => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     await import('../src/main.ts')
     await harness.preparing.promise
+    if (platform !== 'darwin') {
+      // Linux draws its own caption menus and window controls inside the page,
+      // so the native application menu bar is suppressed entirely.
+      expect(harness.menu.setApplicationMenu).toHaveBeenCalledWith(null)
+      return
+    }
     const describeItem = (item: MenuItemConstructorOptions): string | undefined =>
       item.role ?? (item.type === 'separator' ? 'separator' : item.label)
     const template = harness.menu.buildFromTemplate.mock.calls
@@ -1341,17 +1164,6 @@ describe('desktop main startup', () => {
     expect(template.map(describeItem)).toEqual(platform === 'darwin'
       ? ['Desktop test', en.fileMenu, 'editMenu', 'windowMenu']
       : ['Application', 'editMenu'])
-    const describeEdit = (items: MenuItemConstructorOptions[]): unknown[] => items.map(item => Array.isArray(item.submenu)
-      ? [describeItem(item), describeEdit(item.submenu)]
-      : [describeItem(item), item.accelerator, item.visible, item.acceleratorWorksWhenHidden].filter(value => value !== undefined))
-    const edit = template.find(item => item.role === 'editMenu')!.submenu as MenuItemConstructorOptions[] | undefined
-    expect(edit === undefined ? undefined : describeEdit(edit)).toEqual(platform === 'darwin'
-      ? [['undo'], ['redo'], ['separator'], ['cut'], ['copy'], ['paste'],
-        ['pasteAndMatchStyle', 'Shift+Command+V'], ['pasteAndMatchStyle', 'Option+Shift+Command+V', false, true],
-        ['delete'], ['selectAll'], ['separator'],
-        [en.substitutionsMenu, [['showSubstitutions'], ['separator'], ['toggleSmartQuotes'], ['toggleSmartDashes'], ['toggleTextReplacement']]],
-        [en.speechMenu, [['startSpeaking'], ['stopSpeaking']]]]
-      : undefined)
     const application = template[0]!.submenu as MenuItemConstructorOptions[]
     expect(application.filter(item => item.visible !== false).map(describeItem)).toEqual(platform === 'darwin'
       ? ['about', 'separator', en.checkUpdatesMenu, en.cliCommandMenu, 'separator', 'toggleDevTools', 'separator', 'hide', 'hideOthers', 'unhide', 'separator', 'quit']
@@ -1375,7 +1187,7 @@ describe('desktop main startup', () => {
     } finally { harness.app.name = originalName }
   })
 
-  it.each(['http:', 'https:'] as const)('passes the %s Host cookie explicitly and attaches socket credentials only to the owned application origin and window', async (protocol) => {
+  it.each(['http:', 'https:'] as const)('attaches %s Host socket credentials only to the owned application origin and window', async (protocol) => {
     await import('../src/main.ts')
     await harness.preparing.promise
     harness.prepared.resolve()
@@ -1383,8 +1195,6 @@ describe('desktop main startup', () => {
     harness.hosts[0]!.url = `${protocol}//127.0.0.1:3080/?token=test`
     harness.hosts[0]!.ready.resolve()
     await Promise.resolve(invoke(DESKTOP_IPC.boot))
-    expect(harness.connectWelcome).toHaveBeenCalledWith(`${protocol}//127.0.0.1:3080/?token=test`, 'test-cookie')
-    expect(harness.removeLegacyHostCookies).toHaveBeenCalledWith(harness.hostCookies, `${protocol}//127.0.0.1:3080/?token=test`)
     const handler = harness.socketHeaders.mock.calls[0]![1] as (
       details: { url: string; webContentsId: number; requestHeaders: Record<string, string> },
       callback: (result: unknown) => void,
@@ -1404,19 +1214,6 @@ describe('desktop main startup', () => {
     expect(callback).toHaveBeenLastCalledWith({})
     handler({ ...details, url: `${socketProtocol === 'wss:' ? 'ws:' : 'wss:'}//127.0.0.1:3080/api/remote.mux` }, callback)
     expect(callback).toHaveBeenLastCalledWith({})
-  })
-
-  it('logs a legacy Host cookie cleanup failure without blocking boot', async () => {
-    const failure = new Error('cookie store unavailable')
-    harness.removeLegacyHostCookies.mockRejectedValueOnce(failure)
-    await import('../src/main.ts')
-    await harness.preparing.promise
-    harness.prepared.resolve()
-    await harness.hostStarted.promise
-    harness.hosts[0]!.ready.resolve()
-    await Promise.resolve(invoke(DESKTOP_IPC.boot))
-    await vi.waitFor(() => { expect(console.error).toHaveBeenCalledWith('desktop: legacy Host cookie cleanup failed', failure) })
-    expect(harness.connectWelcome).toHaveBeenCalled()
   })
 
   it('shares login key discovery with onboarding and rejects foreign renderers', async () => {
@@ -1820,12 +1617,12 @@ describe('desktop main startup', () => {
     window.visible = false
     const opened = invoke(DESKTOP_IPC.updatesOpen, 'app') as Promise<void>
     await vi.advanceTimersByTimeAsync(0)
-    expect(harness.updateDownload).toHaveBeenCalledWith('1.0.1', 0)
+    expect(harness.updateDownload).toHaveBeenCalledWith('1.0.1')
     expect(harness.updateInstall).not.toHaveBeenCalled()
     window.visible = true
     window.emit('show')
     await opened
-    expect(harness.updateInstall).toHaveBeenCalledWith('1.0.1', 0)
+    expect(harness.updateInstall).toHaveBeenCalledWith('1.0.1')
   })
 
   it('waits for Platform view storage cleanup before an ordinary quit completes', async () => {
@@ -2020,28 +1817,6 @@ describe('desktop main startup', () => {
     }))
   })
 
-  it.each([
-    { phase: 'available', version: '1.0.3' },
-    { phase: 'idle' },
-    { phase: 'error', failedOperation: 'check', message: 'Old feed unavailable' },
-  ] satisfies DesktopUpdateState[])('discards a manual check result after switching channel: $phase', async (result) => {
-    await readyForUpdate()
-    const checked = Promise.withResolvers<DesktopUpdateState>()
-    const requested = Promise.withResolvers<undefined>()
-    harness.updateCheck.mockImplementationOnce(() => { requested.resolve(undefined); return checked.promise })
-    harness.dialog.showMessageBox.mockResolvedValue({ response: 0 })
-    const action = applicationMenuItems().find(item => item.label === 'Check for Updates…')
-    Reflect.apply(action!.click!, undefined, [])
-    const prompt = Promise.resolve(invoke(DESKTOP_IPC.updatesOpen, 'app'))
-    await requested.promise
-    await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')
-    checked.resolve(result)
-    await prompt
-    expect(harness.dialog.showMessageBox).toHaveBeenCalledTimes(1)
-    expect(harness.updateDownload).not.toHaveBeenCalled()
-    expect(harness.updateInstall).not.toHaveBeenCalled()
-  })
-
   it('reports a manual check failure without offering a download', async () => {
     await readyForUpdate()
     harness.updateCheck.mockResolvedValueOnce({ phase: 'error', failedOperation: 'check', message: 'Feed unavailable' })
@@ -2074,7 +1849,7 @@ describe('desktop main startup', () => {
     await invoke(DESKTOP_IPC.updatesOpen, 'app')
     const messages = harness.dialog.showMessageBox.mock.calls.map(call => (call.at(-1) as { message: string }).message)
     expect(messages).not.toContain(en.mandatoryUnavailable)
-    expect(harness.updateDownload).toHaveBeenCalledExactlyOnceWith('1.0.1-nightly.1', 0)
+    expect(harness.updateDownload).toHaveBeenCalledExactlyOnceWith('1.0.1-nightly.1')
   })
 
   it('does not wait for a pending policy request before proceeding with an ordinary update', async () => {
@@ -2088,7 +1863,7 @@ describe('desktop main startup', () => {
       await invoke(DESKTOP_IPC.updatesOpen, 'app')
     })
     try {
-      await vi.waitFor(() => { expect(harness.updateDownload).toHaveBeenCalledWith('1.0.1-nightly.1', 0) })
+      await vi.waitFor(() => { expect(harness.updateDownload).toHaveBeenCalledWith('1.0.1-nightly.1') })
     } finally {
       policy.resolve(Response.json({ code: 500 }, { status: 503 }))
       await operation
@@ -2175,11 +1950,11 @@ describe('desktop main startup', () => {
     await started.promise
     const repeated = invoke(DESKTOP_IPC.updatesOpen, 'app')
     expect(harness.dialog.showMessageBox).not.toHaveBeenCalled()
-    expect(harness.updateDownload).toHaveBeenCalledExactlyOnceWith('1.0.1-nightly.1', 0)
+    expect(harness.updateDownload).toHaveBeenCalledExactlyOnceWith('1.0.1-nightly.1')
     expect(harness.updateInstall).not.toHaveBeenCalled()
     downloading.resolve({ phase: 'ready', version: '1.0.1-nightly.1' })
     await Promise.all([action, repeated])
-    expect(harness.updateInstall).toHaveBeenCalledExactlyOnceWith('1.0.1-nightly.1', 0)
+    expect(harness.updateInstall).toHaveBeenCalledExactlyOnceWith('1.0.1-nightly.1')
     await harness.updateCheck()
     expect(harness.updateInstall).toHaveBeenCalledOnce()
   })
