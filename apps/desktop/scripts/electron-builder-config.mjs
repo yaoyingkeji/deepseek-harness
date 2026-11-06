@@ -141,6 +141,9 @@ export function createElectronBuilderConfig(
   const productVersion = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).version
   const buildVersion = resolveDesktopBuildVersion(env, productVersion)
   const packaged = resolveDesktopBuildCommit(env)
+  const update = unsigned ? undefined : resolvedPlatform === 'linux'
+    ? resolveDesktopLinuxUpdateConfig(env, productVersion)
+    : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
   return {
     appId,
     protocols: [{ name: 'DeepSeek Harness', schemes: ['dsh'] }],
