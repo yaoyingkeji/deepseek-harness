@@ -10,6 +10,8 @@ const NETWORK_FAILURE = /\b(?:ERR_CONNECTION_CLOSED|ERR_CONNECTION_RESET|ERR_INT
  * @returns Stable presentation kind without raw diagnostics.
  */
 function desktopUpdateFailureKind(state: DesktopUpdateState): DesktopUpdateFailureKind {
+  if (state.phase === 'no_release') return 'no-release'
+  if (state.phase === 'upstream_available') return 'upstream-available'
   if (state.failedOperation === 'configuration') return 'configuration'
   if (state.failedOperation === 'install' && state.preparationFailure !== undefined) return state.preparationFailure
   if (state.failedOperation === 'download' && state.downloadFailure !== undefined) return `download-${state.downloadFailure}`

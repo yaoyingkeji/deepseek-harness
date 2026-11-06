@@ -132,6 +132,9 @@ export class DesktopUpdateCoordinator {
     }
     this.updater.autoDownload = false
     this.updater.autoInstallOnAppQuit = false
+    this.updater.channel = channel
+    this.updater.allowPrerelease = channel === 'nightly'
+    this.updater.allowDowngrade = false
     selectUpdateChannel(this.updater, channel)
     this.updater.on('download-progress', this.onProgress)
     this.updater.on('update-downloaded', this.onDownloaded)
@@ -217,6 +220,7 @@ export class DesktopUpdateCoordinator {
     return result
   }
 
+  async download(version: string): Promise<DesktopUpdateState> {
   /**
    * @param version - Version shown in the user's download confirmation.
    * @param revision - Revision captured by the download confirmation; omitted uses the current target.
@@ -251,6 +255,7 @@ export class DesktopUpdateCoordinator {
     return this.downloadOperation
   }
 
+  async install(version: string): Promise<DesktopUpdateState> {
   /**
    * Install a prepared target after a separate user confirmation.
    * @param version - Exact version displayed in the confirmation, never a renderer-selected URL.
@@ -282,6 +287,7 @@ export class DesktopUpdateCoordinator {
     this.disposed = true
     this.updater.off('download-progress', this.onProgress)
     this.updater.off('update-downloaded', this.onDownloaded)
+    void Promise.allSettled([this.checkOperation, this.downloadOperation, this.installOperation])
     // Pending updater promises can still emit EventEmitter errors during shutdown.
     void Promise.allSettled([this.checkOperation, this.downloadOperation, this.installOperation, this.switchTail])
       .then(() => { this.updater.off('error', this.onError) })
@@ -322,12 +328,39 @@ export class DesktopUpdateCoordinator {
     try {
       this.assertLive()
       if (!this.enabled()) throw new Error('desktop update: this application has no packaged update source')
-      const result = await this.updater.checkForUpdates()
+      // Level 1: check the branch's own update feed
+      let branchCheckFailed = false
+      try {
+        const result = await this.updater.checkForUpdates()
+        if (result !== null) {
+          const version = result.updateInfo.version
+          if (valid(version) === null) throw new Error('desktop update: feed version is invalid')
+          if (this.channel === 'latest' && version.includes('-')) throw new Error('desktop update: latest feed contains a prerelease')
+          const hasBranchUpdate = result.isUpdateAvailable && gt(version, this.currentVersion())
+          if (hasBranchUpdate) {
+            const notes = desktopUpdateReleaseNotes(result.updateInfo)
+            this.candidate = version
+            return this.setState({ phase: 'available', version, ...(notes === undefined ? {} : { notes }) })
+          }
+        }
+      } catch (_branchError) {
+        // Branch feed failed (e.g. no linux-latest tag published yet) — proceed to upstream
+        branchCheckFailed = true
+      }
+      // Level 2: fall back to upstream GitHub releases
+      const upstreamVersion = await fetchUpstreamLatestVersion()
+      if (upstreamVersion !== undefined && gt(upstreamVersion, this.currentVersion())) {
+        return this.setState({ phase: 'upstream_available', version: upstreamVersion })
+      }
+      // Both branch and upstream have nothing newer
+      this.candidate = undefined
+      if (branchCheckFailed) {
+        return this.setState({ phase: 'no_release' })
+      }
+      return this.setState({ phase: 'idle' })
       if (generation !== this.generation || this.disposed) return this.current
       if (result === null) throw new Error('desktop update: no check result was returned')
       this.cancellation = result.cancellationToken
-      const version = result.updateInfo.version
-      if (valid(version) === null) throw new Error('desktop update: feed version is invalid')
       this.release = result.isUpdateAvailable && gt(version, this.currentVersion())
         ? { kind: 'checked', version } : { kind: 'none' }
       return this.setState(this.candidate === undefined ? { phase: 'idle' } : { phase: 'available', version })

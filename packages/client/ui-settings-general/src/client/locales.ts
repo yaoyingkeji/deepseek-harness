@@ -565,6 +565,19 @@ export const fr = {
 
 /** German dictionary, checked against the English keys. */
 export const de = {
+  'notifications.plugin': 'Plugin-Vorgänge',
+  'notifications.pluginHint': 'Benachrichtigung bei Plugin-Installation oder -Fehler',
+  'notifications.schedule': 'Geplante Erinnerungen',
+  'notifications.scheduleHint': 'Benachrichtigung wenn eine geplante Aufgabe fällig ist',
+  'notifications.goal': 'Ziel-Statusänderungen',
+  'notifications.goalHint': 'Benachrichtigung wenn ein Ziel abgeschlossen oder blockiert ist',
+  'notifications.nonCurrentSession': 'Benachrichtigungen für nicht aktuelle Sitzung',
+  'notifications.nonCurrentSessionHint': 'Eingeschaltet zeigen auch Hintergrund-Sitzungen Benachrichtigungen an',
+  'notifications.trayFlash': 'Tray-Symbol blinken',
+  'notifications.trayFlashHint': 'Wenn aktiviert, blinkt das Tray-Symbol bei Benachrichtigungen alle 600ms',
+  'notifications.restoreDefaults': 'Standardwerte wiederherstellen',
+  'notifications.sticky': 'Manuell schließen',
+  'notifications.stickyHint': 'Wenn aktiviert, bleiben Benachrichtigungen dieser Kategorie geöffnet, bis sie angeklickt werden',
   'desktop.channel.title': 'Update-Kanal',
   'desktop.channel.description': 'Stabil eignet sich für den Alltag. Entwicklung bietet frühzeitigen Zugang zu neuen Funktionen, kann aber instabil sein.',
   'desktop.channel.stable': 'Stabil',

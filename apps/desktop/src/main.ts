@@ -416,6 +416,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
 }
 
 async function main(): Promise<void> {
+  let desktopSettings = readDesktopSettings(app.getPath('userData'))
   const desktopSettings = await readDesktopSettings(app.getPath('userData'))
   void pruneCrashReports(app.getPath('logs'))
   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
@@ -1014,6 +1015,157 @@ async function main(): Promise<void> {
     await openUpdatePrompt()
   })
 
+  // The close-button behavior preference is owned by the Electron shell settings.
+  ipcMain.handle(DESKTOP_IPC.windowCloseBehaviorGet, (event) => {
+    assertProductSender(event)
+    return desktopSettings.window.closeBehavior
+  })
+  ipcMain.handle(DESKTOP_IPC.windowCloseBehaviorSet, (event, behavior: unknown) => {
+    assertProductSender(event)
+    if (behavior !== 'hide' && behavior !== 'quit') throw new Error('desktop close behavior: must be hide or quit')
+    const next: DesktopCloseBehavior = behavior
+    desktopSettings = { ...desktopSettings, window: { closeBehavior: next } }
+    writeDesktopSettings(app.getPath('userData'), desktopSettings)
+  })
+
+  ipcMain.handle(DESKTOP_IPC.notify, (event, input: unknown) => {
+    assertProductSender(event)
+    if (typeof input !== 'object' || input === null
+      || typeof (input as { title?: unknown }).title !== 'string'
+      || typeof (input as { body?: unknown }).body !== 'string'
+      || !(['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal'] as const)
+        .includes((input as { category?: unknown }).category as DesktopNotificationCategory)) {
+      throw new Error('desktop notify: title, body and category are required')
+    }
+    const { category, title, body } = input as { category: DesktopNotificationCategory; title: string; body: string }
+    const sessionId = (input as { sessionId?: unknown }).sessionId
+    if (sessionId !== undefined && typeof sessionId !== 'string') {
+      throw new Error('desktop notify: sessionId must be a string')
+    }
+    if (!desktopSettings.notifications[category]) return
+    // Non-current-session filter: when off, notifications for sessions that
+    // are not the currently active tab are suppressed. Notifications without
+    // a sessionId always pass through. Default is ON.
+    const backgroundSession = !desktopSettings.notifications.nonCurrentSession
+      && sessionId !== undefined && currentSessionId !== undefined
+      && sessionId !== currentSessionId
+    if (backgroundSession) return
+    // The tray carries the unread state like QQ / WeChat: any notification
+    // that survives the category and session filters starts the blink and
+    // remembers its target session so a tray click jumps straight to that
+    // conversation (or the settings surface for session-less notices).
+    // This runs before the focus-redundancy check so the tray still blinks
+    // for the visible session while the window is focused.
+    unreadPending = true
+    if (sessionId !== undefined) unreadSessionId = sessionId
+    if (desktopSettings.notifications.trayFlash) tray?.flash()
+    // Focus mode: when "focused" is off (the default), the native popup for
+    // the session the user is already looking at is redundant — the in-app
+    // panel shows it. A background session, or a notice without a session
+    // (credential / remote-access), is not redundant while focused, so it
+    // still surfaces. Turning the switch on notifies regardless of focus.
+    const forVisibleSession = sessionId === undefined || currentSessionId === undefined
+      || sessionId === currentSessionId
+    const focusedOnVisible = !desktopSettings.notifications.focused
+      && forVisibleSession
+      && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()
+    if (focusedOnVisible) return
+    const iconPath = process.platform === 'win32'
+      ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
+      : (development ? join(app.getAppPath(), 'resources', 'icon-color.png') : join(process.resourcesPath, 'icon-color.png'))
+    try {
+      const sticky = desktopSettings.notifications.sticky[category] ?? false
+      const notification = new Notification({ title, body, icon: iconPath, silent: false, timeoutType: sticky ? 'never' : 'default' })
+      // Clicking the notification focuses the window and tells the web UI
+      // which session's approval or question panel to surface.
+      notification.on('click', () => {
+        // Directly show and focus the window, bypassing focusPrimaryWindow's
+        // enteredWorkspace guard: a notification click must always reveal the
+        // window so the user can act on the pending approval or question.
+        if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
+          if (mainWindow.isMinimized()) mainWindow.restore()
+          mainWindow.show()
+          mainWindow.focus()
+          mainWindow.webContents.send(DESKTOP_IPC.notifyAction, sessionId)
+        } else {
+          focusPrimaryWindow()
+        }
+      })
+      notification.show()
+    } catch (error) {
+      console.warn('desktop notification: unavailable', error)
+    }
+  })
+
+  // Notification category switches owned by the Electron shell settings.
+  ipcMain.handle(DESKTOP_IPC.notificationsGet, (event) => {
+    assertProductSender(event)
+    return desktopSettings.notifications satisfies DesktopNotificationSettings
+  })
+  ipcMain.handle(DESKTOP_IPC.notificationsSet, (event, category: unknown, enabled: unknown) => {
+    assertProductSender(event)
+    const categories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal', 'focused', 'nonCurrentSession', 'trayFlash'] as const
+    const stickyCategories = ['approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal'] as const
+    // Accept sticky sub-keys as `sticky:<category>` so the same IPC handles them.
+    const isStickyKey = typeof category === 'string' && category.startsWith('sticky:')
+    const baseCategory = isStickyKey ? (category as string).slice(7) : category
+    if (!isStickyKey && !categories.includes(baseCategory as typeof categories[number])) {
+      throw new Error('desktop notifications: unknown category')
+    }
+    if (isStickyKey && !stickyCategories.includes(baseCategory as typeof stickyCategories[number])) {
+      throw new Error('desktop notifications: unknown sticky category')
+    }
+    if (typeof enabled !== 'boolean') throw new Error('desktop notifications: enabled must be true or false')
+    if (isStickyKey) {
+      const cat = baseCategory as DesktopNotificationCategory
+      desktopSettings = {
+        ...desktopSettings,
+        notifications: {
+          ...desktopSettings.notifications,
+          sticky: { ...desktopSettings.notifications.sticky, [cat]: enabled },
+        },
+      }
+    } else {
+      const typedCategory = baseCategory as DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash'
+      desktopSettings = {
+        ...desktopSettings,
+        notifications: { ...desktopSettings.notifications, [typedCategory]: enabled },
+      }
+      // Turning the tray-flash switch off while blinking stops the blink
+      // immediately so the icon does not keep pulsing against the user's wish.
+      if (typedCategory === 'trayFlash' && !enabled) tray?.stopFlash()
+    }
+    writeDesktopSettings(app.getPath('userData'), desktopSettings)
+  })
+  ipcMain.handle(DESKTOP_IPC.notificationsReset, (event) => {
+    assertProductSender(event)
+    tray?.stopFlash()
+    desktopSettings = {
+      ...desktopSettings,
+      notifications: { ...DESKTOP_NOTIFICATION_DEFAULTS },
+    }
+    writeDesktopSettings(app.getPath('userData'), desktopSettings)
+    return desktopSettings.notifications satisfies DesktopNotificationSettings
+  })
+
+  // Track which session the UI is currently viewing so non-current-session
+  // filtering can suppress background-session notifications when disabled.
+  ipcMain.handle(DESKTOP_IPC.setCurrentSession, (event, sessionId: unknown) => {
+    assertProductSender(event)
+    if (sessionId !== undefined && typeof sessionId !== 'string') {
+      throw new Error('desktop set-current-session: sessionId must be a string or undefined')
+    }
+    currentSessionId = sessionId
+    // If the user switched to the session that owned the most recent unread
+    // notification, the blink has served its purpose: stop flashing and clear
+    // the unread marker so the tray icon stays steady.
+    if (unreadPending && sessionId !== undefined && sessionId === unreadSessionId) {
+      tray?.stopFlash()
+      unreadPending = false
+      unreadSessionId = undefined
+    }
+  })
+
   let configurationPrompt: Promise<void> | undefined
   const showConfigurationError = (): Promise<void> => {
     configurationPrompt ??= Promise.resolve().then(async () => {
@@ -1028,30 +1180,24 @@ async function main(): Promise<void> {
               if (channelRequests > 0 || channelState === undefined) return false
               channelRequests++
               publishChannel({ ...channelState, changing: true })
-              try {
                 const loaded = await channelSettings.load()
                 if (loaded.kind === 'error') {
                   publishChannel({ ...channelState, changing: true, error: configurationFailure(loaded.error) })
                   return false
-                }
                 await updates.switchChannel(loaded.channel, async () => {})
                 publishChannel({ channel: updates.selectedChannel, packagedChannel, changing: true })
                 return true
-              } catch (error) {
                 console.error('desktop update: settings reload failed', error)
                 publishChannel({ ...channelState,
                   ...(updates.configurationFailure === 'cleanup' ? { error: 'cleanup' as const } : {}) })
                 return false
               } finally {
                 publishChannel({ ...channelState, changing: --channelRequests > 0 })
-              }
             } } },
         }, mandatoryUI?.confirmationWindow ?? currentDialogWindow())
         if (result.response !== 0) return
-      }
     }).finally(() => { configurationPrompt = undefined })
     return configurationPrompt
-  }
 
   let promptOperation: Promise<void> | undefined
   let policyAuthenticationQueued = false
@@ -1077,6 +1223,7 @@ async function main(): Promise<void> {
       let progress: Promise<unknown> | undefined
       try {
         let state = updates.state
+        if (manual || state.phase === 'idle' || state.phase === 'no_release' || state.phase === 'upstream_available' || (state.phase === 'error' && state.failedOperation === 'check')) {
         const revision = updates.revision
         if (manual || state.phase === 'idle' || (state.phase === 'error' && state.failedOperation === 'check')) {
           controller = new AbortController()

@@ -91,7 +91,6 @@ export interface DesktopChannelState {
   readonly packagedChannel: DesktopUpdateChannel
   readonly changing: boolean
   readonly error?: 'read' | 'format' | 'channel' | 'cleanup'
-}
 
 /** Outcome of one UI action; failures are not global updater state. */
 export type DesktopChannelChangeResult =
@@ -112,4 +111,3 @@ export interface DesktopChannelBridge {
    * @returns Removes this window's subscription.
    */
   subscribe(listener: (state: DesktopChannelState) => void): () => void
-}
