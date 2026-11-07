@@ -518,6 +518,7 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     this.selection.set({})
     previous?.release()
     this.ctx.layout.selectPanel(null)
+    syncDesktopSession(undefined)
   }
 
   private replaceMain(
@@ -550,6 +551,7 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     this.mainReference = reference
     previous?.release()
     if (panel === 'reveal') this.ctx.layout.selectPanel(null)
+    syncDesktopSession(reference.sessionId)
   }
 
 }
@@ -596,3 +598,19 @@ function recentWorkspace(
 }
 
 export { UiWorkspaceService }
+
+/**
+ * Best-effort sync of the active session to the Electron desktop shell so the
+ * main process knows which session the user is viewing. This lets the
+ * notification filter distinguish current-session (redundant while focused)
+ * from background-session notifications (always shown). Missing bridge (web,
+ * tests) must never break navigation.
+ */
+function syncDesktopSession(sessionId: SessionId | undefined): void {
+  try {
+    void (globalThis as typeof globalThis & { dshDesktop?: { setCurrentSession?: (sessionId: string | undefined) => Promise<void> } })
+      .dshDesktop?.setCurrentSession?.(sessionId)
+  } catch {
+    // ignore: desktop session sync must never break navigation
+  }
+}
