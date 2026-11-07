@@ -104,6 +104,37 @@ export const inject = ['contextMenus',
   'slots', 'sessions', 'workspaces', 'locale', 'remote', 'remote.directoryPicker', 'layout', 'shortcuts', 'remoteAccess',
 ]
 
+
+/**
+ * Fire a native desktop notification through the Electron shell bridge when
+ * present; ordinary browsers and focused windows are handled by the shell.
+ * @param category - Notification category (filtered by the General settings).
+ * @param titleZh - Chinese notification title.
+ * @param bodyZh - Chinese notification body.
+ * @param titleEn - English notification title.
+ * @param bodyEn - English notification body.
+ * @param sessionId - Session the notification belongs to.
+ */
+function desktopNotify(category: 'remote' | 'credential' | 'session', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
+  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
+  // a missing bridge, or a failing IPC must never break the core feature flow.
+  try {
+    const root = typeof document === 'undefined' ? undefined : document.documentElement
+    const zh = root === undefined
+      ? false
+      : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'remote' | 'credential' | 'session'; title: string; body: string; sessionId?: string }) => Promise<void> } })
+      .dshDesktop?.notify?.({
+        category,
+        title: zh ? titleZh : titleEn,
+        body: zh ? bodyZh : bodyEn,
+        ...(sessionId === undefined ? {} : { sessionId }),
+      })
+  } catch {
+    // ignore: notification delivery must never throw into the caller path
+  }
+}
+
 /**
  * Register the browser and picker once their slot declarations are on the
  * ledger. Inject factories return plain callbacks; data reads use the
@@ -125,6 +156,47 @@ export function apply(ctx: Context): void {
   const uiWorkspace = new UiWorkspaceService(
     ctx, ctx.remote.directoryPicker, workspaces, sessions, viewInstance.actions, notify,
   )
+
+  // Desktop notifications for remote connections, credential expiry, and
+  // session errors while the window is not focused.
+  ctx.effect(() => ctx.remote.$on('connection/remote-requested', (request) => {
+    desktopNotify(
+      'remote',
+      '远程连接请求',
+      `来自 ${request.authority} 的远程连接已被接受`,
+      'Remote connection requested',
+      `A remote connection from ${request.authority} was admitted`,
+    )
+  }), 'ui-workspace: remote connection notification subscription')
+  ctx.effect(() => ctx.remote.$on('deepseek-account/session-expired', () => {
+    desktopNotify(
+      'credential',
+      '账户会话已过期',
+      'DeepSeek 账户凭据已失效，请重新登录',
+      'Account session expired',
+      'DeepSeek account credentials have expired; please sign in again',
+    )
+  }), 'ui-workspace: credential expiry notification subscription')
+  ctx.effect(() => ctx.remote.$on('deepseek-account/model-sign-in-required', () => {
+    desktopNotify(
+      'credential',
+      '需要重新登录',
+      '模型请求需要您重新登录 DeepSeek 账户',
+      'Sign-in required',
+      'A model request requires you to sign in to your DeepSeek account',
+    )
+  }), 'ui-workspace: model sign-in notification subscription')
+  ctx.effect(() => ctx.remote.$on('api-session/error', (sessionId, message) => {
+    desktopNotify(
+      'session',
+      '会话出错',
+      message,
+      'Session error',
+      message,
+      sessionId,
+    )
+  }), 'ui-workspace: session error notification subscription')
+
   ctx.slots.provideRoot({
     hooks: { workspaces: workspaces.list },
     keyedHooks: {

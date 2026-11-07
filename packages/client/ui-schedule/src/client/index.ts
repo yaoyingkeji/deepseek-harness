@@ -97,6 +97,37 @@ function inputCorrection(error: RemoteFailure): 'host.notFuture' | 'host.invalid
     ? 'host.invalidRule' : undefined
 }
 
+
+/**
+ * Fire a native desktop notification through the Electron shell bridge when
+ * present; ordinary browsers and focused windows are handled by the shell.
+ * @param category - Notification category (filtered by the General settings).
+ * @param titleZh - Chinese notification title.
+ * @param bodyZh - Chinese notification body.
+ * @param titleEn - English notification title.
+ * @param bodyEn - English notification body.
+ * @param sessionId - Session the notification belongs to.
+ */
+function desktopNotify(category: 'schedule', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
+  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
+  // a missing bridge, or a failing IPC must never break the core feature flow.
+  try {
+    const root = typeof document === 'undefined' ? undefined : document.documentElement
+    const zh = root === undefined
+      ? false
+      : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'schedule'; title: string; body: string; sessionId?: string }) => Promise<void> } })
+      .dshDesktop?.notify?.({
+        category,
+        title: zh ? titleZh : titleEn,
+        body: zh ? bodyZh : bodyEn,
+        ...(sessionId === undefined ? {} : { sessionId }),
+      })
+  } catch {
+    // ignore: notification delivery must never throw into the caller path
+  }
+}
+
 /**
  * Register the Host task page, the Session-header reminder catalog, the
  * right-Sidebar page that shows one task's detail, and the transcript card of
@@ -105,6 +136,18 @@ function inputCorrection(error: RemoteFailure): 'host.notFuture' | 'host.invalid
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-schedule: dictionaries')
+  // Desktop notification when a scheduled reminder fires while the window is
+  // not focused; the task list already covers focused use.
+  ctx.effect(() => ctx.remote.$on('schedule/reminder-delivered', (payload) => {
+    desktopNotify(
+      'schedule',
+      '定时提醒已触发',
+      `${payload.count} 个提醒已送达`,
+      'Reminder delivered',
+      `${payload.count} reminder(s) delivered`,
+      payload.sessionId,
+    )
+  }), 'ui-schedule: desktop notification subscription')
   const managerDictionaries = {
     zh: managerZh,
     en: managerEn,
