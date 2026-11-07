@@ -1,6 +1,8 @@
 /** Web subagent catalog, navigation, and addressed-session composer owner. */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { SubagentAddress } from '@deepseek-ai/dsh-subagent/client'
+// Type-only: pulls the `subagent/finished` Cordis event declaration so ctx.remote.$on sees it.
+import type {} from '@deepseek-ai/dsh-subagent'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ComposerChainProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { SubagentCatalogAction, SubagentHeaderLineage, type SubagentCatalogInjected, type SubagentCatalogActionInjected } from './SubagentHeaderLineage.tsx'
