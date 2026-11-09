@@ -1,7 +1,7 @@
 import { readInstallerLocales, renderInstallerStrings } from './installer-locales.mjs'
 import { officePackageDirectories } from '../../../scripts/libreoffice-packages.mjs'
 import { X509Certificate } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readFileSync, chmodSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -269,6 +269,12 @@ export function createElectronBuilderConfig(
       // release, and a rewritten one for installed-update qualification.
       await verifyDesktopRuntime(buildPaths.dsh,
         preparedRuntimeVersion ?? productVersion, { platform: resolvedPlatform, arch: resolvedArch })
+      // Linux: the statically-linked set-net-wm-icon helper ships without the
+      // executable bit on Windows CI runners that do not preserve Unix modes;
+      // restore it so execFile in main.ts does not throw EACCES at runtime.
+      if (resolvedPlatform === 'linux') {
+        chmodSync(join(resourcesDir, 'set-net-wm-icon'), 0o755)
+      }
       // Unsigned Windows builds skip electron-builder's afterSign hook.
       if (packagesWindows && unsigned) await verifyWindowsAsarUnpack(buildPaths.dsh, resourcesDir, windowsCode)
     },
