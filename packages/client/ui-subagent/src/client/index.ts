@@ -11,6 +11,7 @@ import {
 } from './SubagentReadOnlyComposer.tsx'
 import { registerSidebarChat, subagentChatAddress } from './sidebar-chat/index.tsx'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import { desktopNotify } from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -47,53 +48,47 @@ function selectReadOnlySubagent(owner: ComposerChainProps): SubagentReadOnlyMatc
 
 
 /**
- * Fire a native desktop notification through the Electron shell bridge when
- * present; ordinary browsers and focused windows are handled by the shell.
- * @param category - Notification category (filtered by the General settings).
- * @param titleZh - Chinese notification title.
- * @param bodyZh - Chinese notification body.
- * @param titleEn - English notification title.
- * @param bodyEn - English notification body.
- * @param sessionId - Session the notification belongs to.
- */
-function desktopNotify(category: 'subagent', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
-  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
-  // a missing bridge, or a failing IPC must never break the core feature flow.
-  try {
-    const root = typeof document === 'undefined' ? undefined : document.documentElement
-    const zh = root === undefined
-      ? false
-      : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'subagent'; title: string; body: string; sessionId?: string }) => Promise<void> } })
-      .dshDesktop?.notify?.({
-        category,
-        title: zh ? titleZh : titleEn,
-        body: zh ? bodyZh : bodyEn,
-        ...(sessionId === undefined ? {} : { sessionId }),
-      })
-  } catch {
-    // ignore: notification delivery must never throw into the caller path
-  }
-}
-
-/**
  * Client plugin body: register the subagent catalog and read-only composer seats.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-subagent: dictionaries')
   // Desktop notification when a subagent run finishes while the window is not
-  // focused; the subagent catalog already covers focused use.
+  // focused; the subagent catalog already covers focused use. Multiple
+  // subagents finishing in quick succession are coalesced into one notice
+  // (30-second merge window) so a turn that fans out to several children
+  // does not flood the notification center.
+  let mergeTimer: ReturnType<typeof setTimeout> | undefined
+  let mergeFailed = false
+  let mergeCount = 0
+  let mergeSessionId: string | undefined
   ctx.effect(() => ctx.remote.$on('subagent/finished', (info) => {
-    const failed = info.stopReason === 'error'
-    desktopNotify(
-      'subagent',
-      failed ? '子代理运行失败' : '子代理已完成',
-      `${info.provider} 子代理${failed ? '运行出错' : '已完成任务'}`,
-      failed ? 'Subagent failed' : 'Subagent finished',
-      `${info.provider} subagent ${failed ? 'encountered an error' : 'completed its task'}`,
-      info.parentSessionId,
-    )
+    if (info.stopReason === 'error') mergeFailed = true
+    mergeCount += 1
+    mergeSessionId = info.parentSessionId
+    if (mergeTimer !== undefined) return
+    const flush = (): void => {
+      mergeTimer = undefined
+      const failed = mergeFailed
+      const count = mergeCount
+      const sessionId = mergeSessionId
+      mergeFailed = false
+      mergeCount = 0
+      mergeSessionId = undefined
+      desktopNotify(
+        'subagent',
+        failed ? '子代理运行失败' : '子代理已完成',
+        count > 1
+          ? `${count} 个子代理${failed ? '部分运行出错' : '已完成任务'}`
+          : `子代理${failed ? '运行出错' : '已完成任务'}`,
+        failed ? 'Subagent failed' : 'Subagent finished',
+        count > 1
+          ? `${count} subagents ${failed ? 'encountered errors' : 'completed their tasks'}`
+          : `subagent ${failed ? 'encountered an error' : 'completed its task'}`,
+        sessionId,
+      )
+    }
+    mergeTimer = setTimeout(flush, 30_000)
   }), 'ui-subagent: desktop notification subscription')
   ctx.inject(['resources', 'sidebarRightTabs'], (scope) => {
     registerSidebarChat(scope, ctx.locale.bind(NS))

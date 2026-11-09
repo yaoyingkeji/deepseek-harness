@@ -25,7 +25,7 @@ const CATEGORIES: readonly DesktopNotificationCategory[] = [
 const DEFAULT_SETTINGS: DesktopNotificationSettings = {
   approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
   plugin: true, schedule: true, goal: true, focused: false, nonCurrentSession: true, trayFlash: true,
-  sticky: { approval: false, question: false, job: false, subagent: false, credential: false, remote: false, session: false, plugin: false, schedule: false, goal: false },
+  sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
 }
 
 /** Focus-mode switch key: whether notifications also appear while focused. */
@@ -51,7 +51,7 @@ export function DesktopNotificationsRow({ bridge, t }:
     approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
     plugin: true, schedule: true, goal: true,
     focused: false, nonCurrentSession: true, trayFlash: true,
-    sticky: { approval: false, question: false, job: false, subagent: false, credential: false, remote: false, session: false, plugin: false, schedule: false, goal: false },
+    sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
   })
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)

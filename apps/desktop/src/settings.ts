@@ -44,7 +44,7 @@ export type DesktopNotificationSettings = Record<DesktopNotificationCategory, bo
  * Categories that can flood the user with notices and are therefore off by
  * default; the General settings marks them with a recommendation warning.
  */
-export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session', 'plugin', 'schedule']
+export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session']
 
 /** Every notification category with its default-enabled state. */
 export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {

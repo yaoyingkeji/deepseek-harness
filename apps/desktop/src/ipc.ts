@@ -119,7 +119,7 @@ export type DesktopNotificationCategory = 'approval' | 'question' | 'job' | 'sub
  * sends notifications even for non-current sessions; `trayFlash` makes the
  * tray icon flash on notifications.
  */
-export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean; nonCurrentSession: boolean; trayFlash: boolean }
+export type DesktopNotificationSettings = Record<DesktopNotificationCategory, boolean> & { focused: boolean; nonCurrentSession: boolean; trayFlash: boolean; sticky: Record<DesktopNotificationCategory, boolean> }
 
 /** Localized notification payload sent by the web client. */
 export interface DesktopNotifyInput {
