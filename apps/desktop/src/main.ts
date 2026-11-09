@@ -486,6 +486,11 @@ async function main(): Promise<void> {
   let unreadSessionQueue: string[] = []
   let unreadPending = false
   /**
+   * Active native notifications held to prevent premature GC from dropping
+   * click listeners before the user interacts with them.
+   */
+  const activeNotifications = new Set<Notification>()
+  /**
    * Cross-platform window attention: complements tray.flash() so the taskbar
    * / Dock also signals unread notifications. On Linux, flashFrame sets the
    * X11 urgency hint (WM_HINTS) that Deepin/GNOME docks honor even when no
@@ -1028,21 +1033,32 @@ async function main(): Promise<void> {
     // panel shows it. A background session, or a notice without a session
     // (credential / remote-access), is not redundant while focused, so it
     // still surfaces. Turning the switch on notifies regardless of focus.
-    const forVisibleSession = sessionId === undefined || currentSessionId === undefined
-      || sessionId === currentSessionId
+    const forVisibleSession = sessionId !== undefined && (currentSessionId === undefined
+      || sessionId === currentSessionId)
     const focusedOnVisible = !desktopSettings.notifications.focused
       && forVisibleSession
       && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()
     if (focusedOnVisible) return
+    // Non-current-session suppression: when the switch is off, background
+    // sessions are still tracked (tray blink + unread queue) but the native
+    // popup is skipped to avoid interrupting work in the active session.
+    const isNonCurrent = sessionId !== undefined && currentSessionId !== undefined && sessionId !== currentSessionId
+    if (!desktopSettings.notifications.nonCurrentSession && isNonCurrent) return
+    if (!Notification.isSupported()) return
     const iconPath = process.platform === 'win32'
       ? (development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico'))
       : (development ? join(app.getAppPath(), 'resources', 'icon-color.png') : join(process.resourcesPath, 'icon-color.png'))
     try {
       const sticky = desktopSettings.notifications.sticky[category] ?? false
       const notification = new Notification({ title, body, icon: iconPath, silent: false, timeoutType: sticky ? 'never' : 'default' })
+      activeNotifications.add(notification)
+      const releaseNotification = (): void => { activeNotifications.delete(notification); notification.removeAllListeners() }
+      notification.on('closed', releaseNotification)
+      notification.on('failed', releaseNotification)
       // Clicking the notification focuses the window and tells the web UI
       // which session's approval or question panel to surface.
       notification.on('click', () => {
+        releaseNotification()
         // Directly show and focus the window, bypassing focusPrimaryWindow's
         // enteredWorkspace guard: a notification click must always reveal the
         // window so the user can act on the pending approval or question.
@@ -1508,7 +1524,9 @@ async function main(): Promise<void> {
     window.on('focus', automaticCheck)
     // Receiving focus clears the urgency hint / taskbar blink so the window
     // stops demanding attention once the user has seen the pending notices.
-    window.on('focus', () => { stopFlashMainWindow() })
+    // The unread session queue is preserved: the sidebar still shows unread
+    // dots, only the blinking attention signal is cleared.
+    window.on('focus', () => { tray?.stopFlash(); stopFlashMainWindow() })
     // Closing hides by default: the page and the Host keep running, and the next show resumes the same document.
     // The General settings close-behavior option can turn the close button into a real quit instead.
     window.on('close', (event) => {
