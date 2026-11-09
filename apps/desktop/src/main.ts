@@ -3,7 +3,8 @@ import type { ProductEventMap, ProductEvent } from '@deepseek-ai/dsh-client-prod
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
-import { access, readFile, writeFile } from 'node:fs/promises'
+import { access, readFile, writeFile, copyFile, chmod } from 'node:fs/promises'
+import { constants } from 'node:fs'
 import { execFile } from 'node:child_process'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -320,10 +321,21 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     const sizedIcon = iconImg.isEmpty() ? iconImg : iconImg.resize({ width: 256, height: 256 })
     const tmpIconPath = join(app.getPath('temp'), 'deepseek-harness-net-wm-icon.png')
     if (!sizedIcon.isEmpty()) {
-      void writeFile(tmpIconPath, sizedIcon.toPNG()).then(() => {
+      void writeFile(tmpIconPath, sizedIcon.toPNG()).then(async () => {
         const handle = window.getNativeWindowHandle()
         const winId = `0x${handle.length >= 8 ? handle.readBigUInt64LE().toString(16) : handle.readUInt32LE().toString(16)}`
-        execFile(toolPath, [winId, tmpIconPath], (err) => {
+        // AppImage ships a read-only squashfs; if the set-net-wm-icon helper
+        // lacks the executable bit (afterPack chmod did not survive packaging),
+        // copy it to a writable temp path and run from there.
+        let execPath = toolPath
+        try {
+          await access(toolPath, constants.X_OK)
+        } catch {
+          execPath = join(app.getPath('temp'), 'set-net-wm-icon')
+          await copyFile(toolPath, execPath)
+          await chmod(execPath, 0o755)
+        }
+        execFile(execPath, [winId, tmpIconPath], (err) => {
           if (err) console.warn('desktop: failed to set _NET_WM_ICON', err)
         })
       })
