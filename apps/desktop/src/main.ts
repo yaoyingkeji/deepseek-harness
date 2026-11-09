@@ -1053,7 +1053,7 @@ async function main(): Promise<void> {
       const notification = new Notification({ title, body, icon: iconPath, silent: false, timeoutType: sticky ? 'never' : 'default' })
       activeNotifications.add(notification)
       const releaseNotification = (): void => { activeNotifications.delete(notification); notification.removeAllListeners() }
-      notification.on('closed', releaseNotification)
+      notification.on('close', releaseNotification)
       notification.on('failed', releaseNotification)
       // Clicking the notification focuses the window and tells the web UI
       // which session's approval or question panel to surface.
