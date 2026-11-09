@@ -22,7 +22,6 @@ import type { TypertClientEventListener } from '@deepseek-ai/dsh-typert-protocol
 import type { AskUserQuestionItem, PendingUserQuestion, UserQuestionProjectionView } from '@deepseek-ai/dsh-user-questions/types'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import { desktopNotify } from '@deepseek-ai/dsh-client-locale/client'
 import type { UserQuestionPanels, UserQuestionRecord } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -32,6 +31,39 @@ import { QuestionComposer } from './QuestionComposer.tsx'
 import { answeredQuestionDefinition, questionReplyDefinition } from './question-reply.ts'
 import { QuestionReplyView } from './QuestionReplyView.tsx'
 import { en, ja, es, fr, de, ru, pt, zh, type QuestionKey } from './locales.ts'
+
+/**
+ * Fire a native desktop notification through the Electron shell bridge when
+ * present; ordinary browsers and focused windows are handled by the shell.
+ * @param category - Notification category (filtered by the General settings).
+ * @param titleZh - Chinese notification title.
+ * @param bodyZh - Chinese notification body.
+ * @param titleEn - English notification title.
+ * @param bodyEn - English notification body.
+ */
+let cachedZh: boolean | undefined
+function desktopNotify(category: 'approval' | 'question' | 'job', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
+  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
+  // a missing bridge, or a failing IPC must never break the core feature flow.
+  try {
+    if (cachedZh === undefined) {
+      const root = typeof document === 'undefined' ? undefined : document.documentElement
+      cachedZh = root === undefined
+        ? false
+        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+    }
+    const zh = cachedZh
+    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'approval' | 'question' | 'job'; title: string; body: string; sessionId?: string }) => Promise<void> } })
+      .dshDesktop?.notify?.({
+        category,
+        title: zh ? titleZh : titleEn,
+        body: zh ? bodyZh : bodyEn,
+        ...(sessionId === undefined ? {} : { sessionId }),
+      })
+  } catch {
+    // ignore: notification delivery must never throw into the caller path
+  }
+}
 
 export type {
   PendingQuestion, PlanReview, QuestionAnswer, QuestionComposerProps, QuestionWait,

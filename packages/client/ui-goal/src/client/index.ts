@@ -21,7 +21,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import { desktopNotify } from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the renderer-owned slots service.
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the Session standard useProjection seat.
@@ -66,6 +65,40 @@ const NS = 'goal'
 /** Required services for the Goal dock, command-input projection, Remote mutations, and copy. */
 export const inject = ['slots', 'sessions', 'remote', 'remote.goals', 'locale', 'uiConversation']
 
+
+/**
+ * Fire a native desktop notification through the Electron shell bridge when
+ * present; ordinary browsers and focused windows are handled by the shell.
+ * @param category - Notification category (filtered by the General settings).
+ * @param titleZh - Chinese notification title.
+ * @param bodyZh - Chinese notification body.
+ * @param titleEn - English notification title.
+ * @param bodyEn - English notification body.
+ * @param sessionId - Session the notification belongs to.
+ */
+let cachedZh: boolean | undefined
+function desktopNotify(category: 'goal', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
+  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
+  // a missing bridge, or a failing IPC must never break the core feature flow.
+  try {
+    if (cachedZh === undefined) {
+      const root = typeof document === 'undefined' ? undefined : document.documentElement
+      cachedZh = root === undefined
+        ? false
+        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+    }
+    const zh = cachedZh
+    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'goal'; title: string; body: string; sessionId?: string }) => Promise<void> } })
+      .dshDesktop?.notify?.({
+        category,
+        title: zh ? titleZh : titleEn,
+        body: zh ? bodyZh : bodyEn,
+        ...(sessionId === undefined ? {} : { sessionId }),
+      })
+  } catch {
+    // ignore: notification delivery must never throw into the caller path
+  }
+}
 
 /**
  * Client plugin body: the GoalBar dock entry with its mutation verbs.

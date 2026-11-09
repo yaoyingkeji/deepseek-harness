@@ -34,7 +34,6 @@ import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import { desktopNotify } from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the SlotRegistry service merge (ctx.slots).
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -107,6 +106,40 @@ export const inject = ['contextMenus',
 
 
 /**
+ * Fire a native desktop notification through the Electron shell bridge when
+ * present; ordinary browsers and focused windows are handled by the shell.
+ * @param category - Notification category (filtered by the General settings).
+ * @param titleZh - Chinese notification title.
+ * @param bodyZh - Chinese notification body.
+ * @param titleEn - English notification title.
+ * @param bodyEn - English notification body.
+ * @param sessionId - Session the notification belongs to.
+ */
+let cachedZh: boolean | undefined
+function desktopNotify(category: 'remote' | 'credential' | 'session', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
+  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
+  // a missing bridge, or a failing IPC must never break the core feature flow.
+  try {
+    if (cachedZh === undefined) {
+      const root = typeof document === 'undefined' ? undefined : document.documentElement
+      cachedZh = root === undefined
+        ? false
+        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
+    }
+    const zh = cachedZh
+    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'remote' | 'credential' | 'session'; title: string; body: string; sessionId?: string }) => Promise<void> } })
+      .dshDesktop?.notify?.({
+        category,
+        title: zh ? titleZh : titleEn,
+        body: zh ? bodyZh : bodyEn,
+        ...(sessionId === undefined ? {} : { sessionId }),
+      })
+  } catch {
+    // ignore: notification delivery must never throw into the caller path
+  }
+}
+
+/**
  * Register the browser and picker once their slot declarations are on the
  * ledger. Inject factories return plain callbacks; data reads use the
  * framework's global hooks.
@@ -167,9 +200,6 @@ export function apply(ctx: Context): void {
       sessionId,
     )
   }), 'ui-workspace: session error notification subscription')
-  // Desktop notification when a session transitions from running to idle
-  // (task completed) while the window is not focused. We track the previous
-  // running state per session so only the running→idle edge fires a notice.
   const wasRunning = new Set<string>()
   ctx.effect(() => ctx.remote.$on('api-session/status', (sessionId, running) => {
     if (running) {
