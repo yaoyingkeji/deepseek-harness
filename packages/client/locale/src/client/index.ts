@@ -30,7 +30,6 @@ import { LanguageRow } from './LanguageRow.tsx'
 import { createLanguageRowStore } from './settings-store.ts'
 
 export type { LanguageRowComponentProps, LanguageRowInjected } from './LanguageRow.tsx'
-export { desktopNotify } from './desktop-notify.ts'
 export type { LanguageOptionRow, LanguageRowState } from './settings-store.ts'
 export type { CommonKey } from '../locales/index.ts'
 export type { BuiltInLocaleId, LocaleId, LocaleSettings } from '../locale-settings.ts'
