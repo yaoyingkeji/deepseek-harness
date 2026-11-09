@@ -31,11 +31,11 @@ export class DesktopUpdateAttention {
     this.stop = () => {
       parent.off('focus', clear)
       modal.off('focus', clear)
-      if (this.platform === 'win32' && !parent.isDestroyed()) parent.flashFrame(false)
+      if ((this.platform === 'win32' || this.platform === 'linux') && !parent.isDestroyed()) parent.flashFrame(false)
       if (bounce !== undefined) app.dock?.cancelBounce(bounce)
     }
     try {
-      if (this.platform === 'win32') parent.flashFrame(true)
+      if (this.platform === 'win32' || this.platform === 'linux') parent.flashFrame(true)
       if (this.platform === 'darwin') bounce = app.dock?.bounce('informational')
     } catch (error) { console.warn('desktop update: attention unavailable', error) }
     try {

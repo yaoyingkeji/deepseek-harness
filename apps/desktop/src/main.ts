@@ -486,6 +486,24 @@ async function main(): Promise<void> {
   let unreadSessionQueue: string[] = []
   let unreadPending = false
   /**
+   * Cross-platform window attention: complements tray.flash() so the taskbar
+   * / Dock also signals unread notifications. On Linux, flashFrame sets the
+   * X11 urgency hint (WM_HINTS) that Deepin/GNOME docks honor even when no
+   * SNI tray icon is visible; on Windows it blinks the taskbar button.
+   * macOS uses app.dock.bounce since flashFrame is a no-op there.
+   */
+  const flashMainWindow = (): void => {
+    if (mainWindow !== undefined && !mainWindow.isDestroyed() && !mainWindow.isFocused()) {
+      if (process.platform === 'darwin') app.dock?.bounce('informational')
+      else mainWindow.flashFrame(true)
+    }
+  }
+  const stopFlashMainWindow = (): void => {
+    if (mainWindow !== undefined && !mainWindow.isDestroyed() && process.platform !== 'darwin') {
+      mainWindow.flashFrame(false)
+    }
+  }
+  /**
    * The operating system is ending the session: the quit skips its confirmation. Windows sets it
    * on the definitive session-end message. macOS sets it on the power-off notification, which
    * another application can still cancel, so the next focus or show of the main window clears it.
@@ -1001,7 +1019,10 @@ async function main(): Promise<void> {
     // while the window is focused.
     unreadPending = true
     if (sessionId !== undefined && !unreadSessionQueue.includes(sessionId)) unreadSessionQueue.push(sessionId)
-    if (desktopSettings.notifications.trayFlash) tray?.flash()
+    if (desktopSettings.notifications.trayFlash) {
+      tray?.flash()
+      flashMainWindow()
+    }
     // Focus mode: when "focused" is off (the default), the native popup for
     // the session the user is already looking at is redundant — the in-app
     // panel shows it. A background session, or a notice without a session
@@ -1031,7 +1052,7 @@ async function main(): Promise<void> {
           mainWindow.focus()
           // Pop the first pending session so successive clicks walk later ones.
           const target = sessionId ?? unreadSessionQueue.shift()
-          if (unreadSessionQueue.length === 0) { unreadPending = false; tray?.stopFlash() }
+          if (unreadSessionQueue.length === 0) { unreadPending = false; tray?.stopFlash(); stopFlashMainWindow() }
           mainWindow.webContents.send(DESKTOP_IPC.notifyAction, target)
         } else {
           focusPrimaryWindow()
@@ -1079,13 +1100,14 @@ async function main(): Promise<void> {
       }
       // Turning the tray-flash switch off while blinking stops the blink
       // immediately so the icon does not keep pulsing against the user's wish.
-      if (typedCategory === 'trayFlash' && !enabled) tray?.stopFlash()
+      if (typedCategory === 'trayFlash' && !enabled) { tray?.stopFlash(); stopFlashMainWindow() }
     }
     writeDesktopSettings(app.getPath('userData'), desktopSettings)
   })
   ipcMain.handle(DESKTOP_IPC.notificationsReset, (event) => {
     assertProductSender(event)
     tray?.stopFlash()
+    stopFlashMainWindow()
     unreadPending = false
     unreadSessionQueue = []
     desktopSettings = {
@@ -1112,6 +1134,7 @@ async function main(): Promise<void> {
       if (index !== -1) unreadSessionQueue.splice(index, 1)
       if (unreadSessionQueue.length === 0) {
         tray?.stopFlash()
+        stopFlashMainWindow()
         unreadPending = false
       }
     }
@@ -1349,6 +1372,7 @@ async function main(): Promise<void> {
   // for session-less notices such as credential / remote-access requests).
   const openFromTray = (): void => {
     tray?.stopFlash()
+    stopFlashMainWindow()
     // Pop the first pending session so successive tray clicks walk later ones.
     const target = unreadSessionQueue.shift()
     const pending = unreadPending
@@ -1482,6 +1506,9 @@ async function main(): Promise<void> {
     browserGuests.bind(window, (guest, name) => shortcuts.attachGuest(window, guest, name))
     shortcuts.attach(window)
     window.on('focus', automaticCheck)
+    // Receiving focus clears the urgency hint / taskbar blink so the window
+    // stops demanding attention once the user has seen the pending notices.
+    window.on('focus', () => { stopFlashMainWindow() })
     // Closing hides by default: the page and the Host keep running, and the next show resumes the same document.
     // The General settings close-behavior option can turn the close button into a real quit instead.
     window.on('close', (event) => {
