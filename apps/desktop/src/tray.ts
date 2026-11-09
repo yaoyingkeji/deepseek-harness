@@ -54,6 +54,7 @@ export class DesktopTray {
   private normalIcon: NativeImage
   private dimIcon: NativeImage
   private flashTimer: ReturnType<typeof setInterval> | undefined
+  private flashTimeout: ReturnType<typeof setTimeout> | undefined
   /** Base directory of the icon resources (contains icon-dark.png, icon-light.png). */
   private readonly iconDir: string
   /** Current icon path — updated on theme change so the next switch is detected. */
@@ -146,6 +147,7 @@ export class DesktopTray {
       }
       showNormal = !showNormal
     }, 600)
+    this.flashTimeout = setTimeout(() => { this.stopFlash() }, 60_000)
   }
 
   /** Stop flashing immediately and restore the normal tray icon. */
@@ -153,6 +155,10 @@ export class DesktopTray {
     if (this.flashTimer !== undefined) {
       clearInterval(this.flashTimer)
       this.flashTimer = undefined
+    }
+    if (this.flashTimeout !== undefined) {
+      clearTimeout(this.flashTimeout)
+      this.flashTimeout = undefined
     }
     if (this.tray !== undefined) {
       this.tray.setImage(this.normalIcon)

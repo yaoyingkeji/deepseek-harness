@@ -58,6 +58,7 @@ import { RowActionToast } from './session-actions/RowActionToast.tsx'
 import { registerToasts } from './toast/register.ts'
 import { WorkspacePicker } from './WorkspacePicker.tsx'
 import { en, ja, es, fr, de, ru, pt, zh, type WorkspaceKey } from './locales.ts'
+import { desktopNotify } from '@deepseek-ai/dsh-client-ui-primitives'
 
 export type { StartSessionOptions, UiWorkspace } from './navigation.ts'
 export type {
@@ -103,41 +104,6 @@ const NS = 'workspace'
 export const inject = ['contextMenus',
   'slots', 'sessions', 'workspaces', 'locale', 'remote', 'remote.directoryPicker', 'layout', 'shortcuts', 'remoteAccess',
 ]
-
-
-/**
- * Fire a native desktop notification through the Electron shell bridge when
- * present; ordinary browsers and focused windows are handled by the shell.
- * @param category - Notification category (filtered by the General settings).
- * @param titleZh - Chinese notification title.
- * @param bodyZh - Chinese notification body.
- * @param titleEn - English notification title.
- * @param bodyEn - English notification body.
- * @param sessionId - Session the notification belongs to.
- */
-let cachedZh: boolean | undefined
-function desktopNotify(category: 'remote' | 'credential' | 'session', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
-  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
-  // a missing bridge, or a failing IPC must never break the core feature flow.
-  try {
-    if (cachedZh === undefined) {
-      const root = typeof document === 'undefined' ? undefined : document.documentElement
-      cachedZh = root === undefined
-        ? false
-        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-    }
-    const zh = cachedZh
-    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'remote' | 'credential' | 'session'; title: string; body: string; sessionId?: string }) => Promise<void> } })
-      .dshDesktop?.notify?.({
-        category,
-        title: zh ? titleZh : titleEn,
-        body: zh ? bodyZh : bodyEn,
-        ...(sessionId === undefined ? {} : { sessionId }),
-      })
-  } catch {
-    // ignore: notification delivery must never throw into the caller path
-  }
-}
 
 /**
  * Register the browser and picker once their slot declarations are on the
@@ -215,6 +181,11 @@ export function apply(ctx: Context): void {
       )
     }
   }), 'ui-workspace: session idle notification subscription')
+  // Clean up wasRunning when a session is removed directly (not via idle) so
+  // its id does not linger in the set after the session is gone.
+  ctx.effect(() => ctx.remote.$on('api-session/removed', (sessionId) => {
+    wasRunning.delete(sessionId)
+  }), 'ui-workspace: session removed cleanup')
 
   ctx.slots.provideRoot({
     hooks: { workspaces: workspaces.list },

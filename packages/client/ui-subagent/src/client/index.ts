@@ -17,6 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { en, ja, es, fr, de, ru, pt, NS, zh, type SubagentKey } from './locales.ts'
+import { desktopNotify } from '@deepseek-ai/dsh-client-ui-primitives'
 export type * from './slots.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -43,41 +44,6 @@ function selectReadOnlySubagent(owner: ComposerChainProps): SubagentReadOnlyMatc
   if (subagent.address.mode === 'unknown') return { reason: 'unknown' }
   if (subagent.address.mode === 'one-shot') return { reason: 'one-shot' }
   return null
-}
-
-
-/**
- * Fire a native desktop notification through the Electron shell bridge when
- * present; ordinary browsers and focused windows are handled by the shell.
- * @param category - Notification category (filtered by the General settings).
- * @param titleZh - Chinese notification title.
- * @param bodyZh - Chinese notification body.
- * @param titleEn - English notification title.
- * @param bodyEn - English notification body.
- * @param sessionId - Session the notification belongs to.
- */
-let cachedZh: boolean | undefined
-function desktopNotify(category: 'subagent', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
-  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
-  // a missing bridge, or a failing IPC must never break the core feature flow.
-  try {
-    if (cachedZh === undefined) {
-      const root = typeof document === 'undefined' ? undefined : document.documentElement
-      cachedZh = root === undefined
-        ? false
-        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-    }
-    const zh = cachedZh
-    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'subagent'; title: string; body: string; sessionId?: string }) => Promise<void> } })
-      .dshDesktop?.notify?.({
-        category,
-        title: zh ? titleZh : titleEn,
-        body: zh ? bodyZh : bodyEn,
-        ...(sessionId === undefined ? {} : { sessionId }),
-      })
-  } catch {
-    // ignore: notification delivery must never throw into the caller path
-  }
 }
 
 /**

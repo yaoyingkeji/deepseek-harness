@@ -62,6 +62,7 @@ import { TaskManagerIcon } from './TaskManagerIcon.tsx'
 import { sessionLinkState } from './session-link.ts'
 import { en, ja, es, fr, de, ru, pt, NS, zh, type ScheduleCatalogKey } from './locales.ts'
 import { en as managerEn, ja as managerJa, es as managerEs, fr as managerFr, de as managerDe, ru as managerRu, pt as managerPt, zh as managerZh, type TaskManagerKey } from './task-manager-locales.ts'
+import { desktopNotify } from '@deepseek-ai/dsh-client-ui-primitives'
 
 const MANAGER_NS = 'schedule.manager'
 const PANEL_ID = 'schedules' as MainPanelId
@@ -95,41 +96,6 @@ function inputCorrection(error: RemoteFailure): 'host.notFuture' | 'host.invalid
   if (code === 'not_future') return 'host.notFuture'
   return code === 'invalid_rule' || code === 'frequency_too_high' || code === 'invalid_time_zone' || code === 'time_out_of_range'
     ? 'host.invalidRule' : undefined
-}
-
-
-/**
- * Fire a native desktop notification through the Electron shell bridge when
- * present; ordinary browsers and focused windows are handled by the shell.
- * @param category - Notification category (filtered by the General settings).
- * @param titleZh - Chinese notification title.
- * @param bodyZh - Chinese notification body.
- * @param titleEn - English notification title.
- * @param bodyEn - English notification body.
- * @param sessionId - Session the notification belongs to.
- */
-let cachedZh: boolean | undefined
-function desktopNotify(category: 'schedule', titleZh: string, bodyZh: string, titleEn: string, bodyEn: string, sessionId?: string): void {
-  // Notifications are a best-effort enhancement: a missing DOM (tests, SSR),
-  // a missing bridge, or a failing IPC must never break the core feature flow.
-  try {
-    if (cachedZh === undefined) {
-      const root = typeof document === 'undefined' ? undefined : document.documentElement
-      cachedZh = root === undefined
-        ? false
-        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
-    }
-    const zh = cachedZh
-    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notify?: (input: { category: 'schedule'; title: string; body: string; sessionId?: string }) => Promise<void> } })
-      .dshDesktop?.notify?.({
-        category,
-        title: zh ? titleZh : titleEn,
-        body: zh ? bodyZh : bodyEn,
-        ...(sessionId === undefined ? {} : { sessionId }),
-      })
-  } catch {
-    // ignore: notification delivery must never throw into the caller path
-  }
 }
 
 /**
