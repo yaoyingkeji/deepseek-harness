@@ -61,20 +61,14 @@ jobs:
 
       - name: Resolve connection/package.json conflicts (upstream priority + keep fork remote-events)
         run: |
+          set -e
+          # 用 git show 读取两边干净的 JSON（绕过冲突标记 / 多块冲突）
+          git show HEAD:packages/client/connection/package.json > /tmp/fork_pkg.json
+          git show origin/master:packages/client/connection/package.json > /tmp/master_pkg.json
           python3 -c "
-          import json, re
-          with open('packages/client/connection/package.json', 'r') as f:
-              raw = f.read()
-          def parse_sides(text):
-              # ours: between <<<<<<< HEAD and (||||||| base-block =======  OR  =======)
-              m = re.search(r'<<<<<<< HEAD\n(.*?)(?:\|\|\|\|\|\|\| [^\n]*\n.*?=======\n|=======\n)', text, flags=re.DOTALL)
-              ours = m.group(1) if m else None
-              m2 = re.search(r'=======\n(.*?)>>>>>>> [^\n]*\n', text, flags=re.DOTALL)
-              theirs = m2.group(1) if m2 else None
-              return ours, theirs
-          ours, theirs = parse_sides(raw)
-          fork_pkg = json.loads(ours) if ours else {}
-          master_pkg = json.loads(theirs) if theirs else {}
+          import json
+          fork_pkg = json.load(open('/tmp/fork_pkg.json'))
+          master_pkg = json.load(open('/tmp/master_pkg.json'))
           # 以上游 master 为基准（version/zod 等取上游）
           merged = json.loads(json.dumps(master_pkg))
           # 保留 fork 的 ./remote-events 导出（上游没实现 -> 保留 fork 版本）
@@ -92,6 +86,10 @@ jobs:
           with open('packages/client/connection/package.json', 'w') as f:
               json.dump(merged, f, indent=2, ensure_ascii=False)
               f.write('\n')
+          print('version:', merged['version'])
+          print('zod:', merged['dependencies']['zod'])
+          print('has remote-events:', './remote-events' in merged['exports'])
+          print('files:', merged['files'])
           "
           git add packages/client/connection/package.json
           echo "=== connection/package.json 冲突已解决（上游优先 + 保留 fork remote-events）==="
