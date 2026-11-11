@@ -363,7 +363,6 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     window.on('maximize', sendMaximized)
     window.on('unmaximize', sendMaximized)
     window.webContents.on('did-finish-load', sendMaximized)
-=======
   if (process.platform === 'win32' && primary) {
     const updateBackground = (): void => {
       if (!window.isDestroyed()) window.setBackgroundColor(chromeFallbackFill())
