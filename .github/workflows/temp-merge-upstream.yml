@@ -62,30 +62,28 @@ jobs:
       - name: Resolve connection/package.json conflicts (upstream priority + keep fork remote-events)
         run: |
           python3 -c "
-          import json
-          # 读取冲突文件原始内容，按冲突标记拆分 ours(HEAD)/theirs(master)
+          import json, re
           with open('packages/client/connection/package.json', 'r') as f:
               raw = f.read()
-          import re
-          # 提取 ours 与 theirs 两侧 JSON（去除冲突标记后分别解析）
-          def extract(mark_start, mark_end, text):
-              m = re.search(mark_start + r'\n(.*?)' + mark_end + r'\n', text, flags=re.DOTALL)
-              return m.group(1) if m else None
-          ours = extract(r'<<<<<<< HEAD', r'=======', raw)
-          theirs = extract(r'=======', r'>>>>>>> [^\n]*', raw)
+          def parse_sides(text):
+              # ours: between <<<<<<< HEAD and (||||||| base-block =======  OR  =======)
+              m = re.search(r'<<<<<<< HEAD\n(.*?)(?:\|\|\|\|\|\|\| [^\n]*\n.*?=======\n|=======\n)', text, flags=re.DOTALL)
+              ours = m.group(1) if m else None
+              m2 = re.search(r'=======\n(.*?)>>>>>>> [^\n]*\n', text, flags=re.DOTALL)
+              theirs = m2.group(1) if m2 else None
+              return ours, theirs
+          ours, theirs = parse_sides(raw)
           fork_pkg = json.loads(ours) if ours else {}
           master_pkg = json.loads(theirs) if theirs else {}
-          # 以上游 master 为基准
+          # 以上游 master 为基准（version/zod 等取上游）
           merged = json.loads(json.dumps(master_pkg))
           # 保留 fork 的 ./remote-events 导出（上游没实现 -> 保留 fork 版本）
           if './remote-events' in fork_pkg.get('exports', {}):
               merged.setdefault('exports', {})['./remote-events'] = fork_pkg['exports']['./remote-events']
           # files: 保留 fork 的 remote-connection-request.js + 上游新增项
-          fork_files = fork_pkg.get('files', [])
           merged_files = list(merged.get('files', []))
-          for ff in fork_files:
+          for ff in fork_pkg.get('files', []):
               if ff not in merged_files and 'remote-connection-request' in ff:
-                  # 插到 lib/types 前面以贴近 fork 顺序
                   if 'lib/types/**/*.d.ts' in merged_files:
                       merged_files.insert(merged_files.index('lib/types/**/*.d.ts'), ff)
                   else:
