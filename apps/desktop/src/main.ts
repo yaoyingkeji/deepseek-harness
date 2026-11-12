@@ -1070,7 +1070,14 @@ async function main(): Promise<void> {
       unreadPending = true
       if (sessionId !== undefined && !unreadSessionQueue.includes(sessionId)) unreadSessionQueue.push(sessionId)
     }
-    if (desktopSettings.notifications.trayFlash) {
+    // Tray flash: for a focused-session notice, only approval/question (types
+    // that require user action) start the blink — the in-app panel already
+    // shows them, but the user may not notice and the agent is blocked until
+    // they act. Informational notices (job/goal/etc.) in a focused session are
+    // already visible and need no tray attention. Non-focused sessions always
+    // flash so the user is alerted to switch back.
+    const needsAction = category === 'approval' || category === 'question'
+    if (desktopSettings.notifications.trayFlash && (!isCurrentFocused || needsAction)) {
       tray?.flash()
       flashMainWindow()
     }
