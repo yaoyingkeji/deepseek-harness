@@ -1135,6 +1135,25 @@ async function main(): Promise<void> {
     }
   })
 
+  // Resolve a notification after the user has answered an approval or question
+  // in the UI: remove its session from the unread queue and stop the tray flash
+  // so the icon does not keep pulsing once the user has already acted.
+  ipcMain.handle(DESKTOP_IPC.notifyDismiss, (event, sessionId?: unknown) => {
+    assertProductSender(event)
+    if (sessionId !== undefined) {
+      if (typeof sessionId !== 'string') throw new Error('desktop notify-dismiss: sessionId must be a string')
+      const index = unreadSessionQueue.indexOf(sessionId)
+      if (index !== -1) unreadSessionQueue.splice(index, 1)
+    }
+    // Even a focused-session notice (never queued) starts the tray flash; once
+    // the user resolves it, clear all pending state and stop blinking.
+    if (unreadSessionQueue.length === 0) {
+      unreadPending = false
+      tray?.stopFlash()
+      stopFlashMainWindow()
+    }
+  })
+
   // Notification category switches owned by the Electron shell settings.
   ipcMain.handle(DESKTOP_IPC.notificationsGet, (event) => {
     assertProductSender(event)
