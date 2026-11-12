@@ -17,6 +17,7 @@ const { autoUpdater } = electronUpdater
 /** Upstream repo for fallback version checks when the branch feed has no newer build. */
 const UPSTREAM_REPO = 'deepseek-ai/deepseek-harness'
 const FALLBACK_HTTP_TIMEOUT_MS = 15_000
+const UPSTREAM_CACHE_TTL_MS = 30 * 60_000
 
 /**
  * Whether the packaged application has an update source. On Linux the generic
@@ -45,10 +46,23 @@ export function desktopUpdateReleaseNotes(updateInfo: UpdateInfo): string | unde
 /**
  * Query the upstream GitHub repository for its latest release tag version.
  * Returns the tag name without the leading "dsh-" prefix when it's a dsh-*
- * tag, otherwise returns the full tag name.
+ * tag, otherwise returns the full tag name. Results are cached for 30 minutes
+ * to stay well within the 60 req/hour unauthenticated GitHub API rate limit.
  * @returns Latest upstream version string, or undefined on any error.
  */
+let upstreamVersionCache: { value: string | undefined; expires: number } | undefined
+
 async function fetchUpstreamLatestVersion(): Promise<string | undefined> {
+  const now = Date.now()
+  if (upstreamVersionCache !== undefined && upstreamVersionCache.expires > now) {
+    return upstreamVersionCache.value
+  }
+  const value = await fetchUpstreamLatestVersionLive()
+  upstreamVersionCache = { value, expires: now + UPSTREAM_CACHE_TTL_MS }
+  return value
+}
+
+async function fetchUpstreamLatestVersionLive(): Promise<string | undefined> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FALLBACK_HTTP_TIMEOUT_MS)
   try {
