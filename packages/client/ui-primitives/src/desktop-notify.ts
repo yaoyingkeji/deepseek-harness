@@ -52,3 +52,18 @@ export function desktopNotify(
     // ignore: notification delivery must never throw into the caller path
   }
 }
+
+/**
+ * Tell the desktop shell the user has resolved a notification (e.g. answered
+ * an approval) so it can stop the tray flash. Symmetric with `desktopNotify`:
+ * best-effort, never throws into the caller path.
+ * @param sessionId - Session whose notification was resolved, or undefined to clear all.
+ */
+export function desktopNotifyDismiss(sessionId?: string): void {
+  try {
+    void (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; notifyDismiss?: (sessionId?: string) => Promise<void> } })
+      .dshDesktop?.notifyDismiss?.(sessionId)
+  } catch {
+    // ignore: notification dismiss must never throw into the caller path
+  }
+}
