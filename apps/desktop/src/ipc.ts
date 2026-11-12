@@ -47,6 +47,7 @@ export const DESKTOP_IPC = {
   notificationsReset: 'dsh-desktop:notifications-reset',
   notify: 'dsh-desktop:notify',
   notifyAction: 'dsh-desktop:notify-action',
+  notifyDismiss: 'dsh-desktop:notify-dismiss',
   setCurrentSession: 'dsh-desktop:set-current-session',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
@@ -160,6 +161,13 @@ export interface DshDesktopProductApi {
    * @param input - Category plus localized title and body.
    */
   notify(input: DesktopNotifyInput): Promise<void>
+  /**
+   * Tell the shell the user has resolved a notification (e.g. answered an
+   * approval) so it can stop the tray flash. Passing the session id removes
+   * it from the unread queue; omitting it clears all pending state.
+   * @param sessionId - Session whose notification was resolved, or undefined.
+   */
+  notifyDismiss(sessionId?: string): Promise<void>
   readonly notifications: {
     get(): Promise<DesktopNotificationSettings>
     set(category: DesktopNotificationCategory | 'focused' | 'nonCurrentSession' | 'trayFlash' | `sticky:${DesktopNotificationCategory}`, enabled: boolean): Promise<void>
