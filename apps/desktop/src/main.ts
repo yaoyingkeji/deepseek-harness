@@ -1046,8 +1046,16 @@ async function main(): Promise<void> {
     // the settings surface for session-less notices). This runs before the
     // focus-redundancy check so the tray still blinks for the visible session
     // while the window is focused.
+    //
+    // When the notification belongs to the session the user is already viewing
+    // in a focused window, skip queueing: the in-app panel already shows it, and
+    // queueing would leave a stale entry that no code path clears after the user
+    // resolves the approval or question without switching sessions — the tray
+    // would then blink indefinitely. The tray still blinks as an attention cue.
+    const isCurrentFocused = sessionId !== undefined && sessionId === currentSessionId
+      && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()
     unreadPending = true
-    if (sessionId !== undefined && !unreadSessionQueue.includes(sessionId)) unreadSessionQueue.push(sessionId)
+    if (sessionId !== undefined && !isCurrentFocused && !unreadSessionQueue.includes(sessionId)) unreadSessionQueue.push(sessionId)
     if (desktopSettings.notifications.trayFlash) {
       tray?.flash()
       flashMainWindow()
