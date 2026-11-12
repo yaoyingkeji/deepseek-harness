@@ -88,6 +88,7 @@ function createProductApi(): DshDesktopProductApi {
       set: behavior => ipcRenderer.invoke(DESKTOP_IPC.windowCloseBehaviorSet, behavior) as Promise<void>,
     },
     notify: input => ipcRenderer.invoke(DESKTOP_IPC.notify, input) as Promise<void>,
+    notifyDismiss: (sessionId) => ipcRenderer.invoke(DESKTOP_IPC.notifyDismiss, sessionId) as Promise<void>,
     notifications: {
       get: () => ipcRenderer.invoke(DESKTOP_IPC.notificationsGet) as Promise<DesktopNotificationSettings>,
       set: (category, enabled) => ipcRenderer.invoke(DESKTOP_IPC.notificationsSet, category, enabled) as Promise<void>,
