@@ -76,15 +76,20 @@ export function installLinuxWindowControls(): { update(): void; dispose(): void 
     if (document.querySelector('[data-shell-overlay]') === null) return
     document.body.append(host)
     observer.disconnect()
+    clearTimeout(fallback)
   }
   const observer = new MutationObserver(mount)
   observer.observe(document.body, { childList: true, subtree: true })
+  // Fallback: force-mount after 5 s so a hidden titlebar never leaves the
+  // user without window controls if the shell overlay is delayed or absent.
+  const fallback = setTimeout(mount, 5000)
   mount()
   update()
   return {
     update,
     dispose: () => {
       observer.disconnect()
+      clearTimeout(fallback)
       ipcRenderer.off(DESKTOP_IPC.windowMaximized, onMaximized)
       host.remove()
     },
