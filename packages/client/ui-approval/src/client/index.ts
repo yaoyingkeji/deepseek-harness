@@ -12,7 +12,7 @@ import { ApprovalCard } from './ApprovalCard.tsx'
 import { ApprovalPanel } from './ApprovalPanel.tsx'
 import { PendingApproval } from './contract/slots.ts'
 import { en, ja, es, fr, de, ru, pt, zh } from './locales.ts'
-import { desktopNotify } from '@deepseek-ai/dsh-client-ui-primitives'
+import { desktopNotify, desktopNotifyDismiss } from '@deepseek-ai/dsh-client-ui-primitives'
 export type {
   ApprovalCardInput,
   ApprovalComposerProps,
@@ -68,6 +68,9 @@ async function answerApproval(
   } finally {
     remove()
     completed.resolve()
+    // The user has resolved the approval: tell the desktop shell to stop the
+    // tray flash so the icon does not keep pulsing after the decision.
+    desktopNotifyDismiss(sessionId)
   }
 }
 /* jscpd:ignore-end */
