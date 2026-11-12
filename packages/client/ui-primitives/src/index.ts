@@ -141,5 +141,5 @@ export { formatQuoteText } from './markdown/quote-text.ts'
 
 export type { MarkdownMenuTarget } from './markdown/MarkdownDelegate.tsx'
 
-export { desktopNotify } from './desktop-notify.ts'
+export { desktopNotify, desktopNotifyDismiss } from './desktop-notify.ts'
 export type { DesktopNotifyCategory } from './desktop-notify.ts'
