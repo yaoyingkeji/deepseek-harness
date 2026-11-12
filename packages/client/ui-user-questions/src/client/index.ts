@@ -31,7 +31,7 @@ import { QuestionComposer } from './QuestionComposer.tsx'
 import { answeredQuestionDefinition, questionReplyDefinition } from './question-reply.ts'
 import { QuestionReplyView } from './QuestionReplyView.tsx'
 import { en, ja, es, fr, de, ru, pt, zh, type QuestionKey } from './locales.ts'
-import { desktopNotify } from '@deepseek-ai/dsh-client-ui-primitives'
+import { desktopNotify, desktopNotifyDismiss } from '@deepseek-ai/dsh-client-ui-primitives'
 export type {
   PendingQuestion, PlanReview, QuestionAnswer, QuestionComposerProps, QuestionWait,
 } from './contract/slots.ts'
@@ -286,6 +286,9 @@ async function answerQuestion(
     if (callId === undefined) card.remove()
     completed.resolve()
     finishRequest()
+    // The user has resolved the question: tell the desktop shell to stop the
+    // tray flash so the icon does not keep pulsing after the reply.
+    desktopNotifyDismiss(sessionId)
   }
 }
 
