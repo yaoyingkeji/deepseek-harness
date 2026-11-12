@@ -303,7 +303,9 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     },
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (['http:', 'https:'].includes(new URL(url).protocol)) void shell.openExternal(url)
+    try {
+      if (['http:', 'https:'].includes(new URL(url).protocol)) void shell.openExternal(url)
+    } catch { /* invalid url: deny silently */ }
     return { action: 'deny' }
   })
   // Linux: Electron 44 BrowserWindow({icon}) and window.setIcon() do NOT set
@@ -340,7 +342,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
         execFile(execPath, [winId, tmpIconPath], (err) => {
           if (err) console.warn('desktop: failed to set _NET_WM_ICON', err)
         })
-      })
+      }).catch((error: unknown) => { console.warn('desktop: failed to write _NET_WM_ICON temp file', error) })
     }
   }
   if (process.platform === 'darwin' || process.platform === 'win32' || process.platform === 'linux') {
@@ -421,12 +423,16 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     }
   })
   window.webContents.on('will-navigate', (event, url) => {
-    const destination = new URL(url)
-    const current = new URL(window.webContents.getURL())
-    if (destination.protocol !== `${SCHEME}:`
-      && !(destination.protocol === 'http:' && destination.origin === current.origin)) {
+    try {
+      const destination = new URL(url)
+      const current = new URL(window.webContents.getURL())
+      if (destination.protocol !== `${SCHEME}:`
+        && !(destination.protocol === 'http:' && destination.origin === current.origin)) {
+        event.preventDefault()
+        if (['http:', 'https:'].includes(destination.protocol)) void shell.openExternal(url)
+      }
+    } catch {
       event.preventDefault()
-      if (['http:', 'https:'].includes(destination.protocol)) void shell.openExternal(url)
     }
   })
   return window
@@ -1051,11 +1057,19 @@ async function main(): Promise<void> {
     // in a focused window, skip queueing: the in-app panel already shows it, and
     // queueing would leave a stale entry that no code path clears after the user
     // resolves the approval or question without switching sessions — the tray
-    // would then blink indefinitely. The tray still blinks as an attention cue.
+    // would then blink indefinitely. The tray still blinks as an attention cue,
+    // but unreadPending stays in sync with the queue so a tray click does not
+    // emit a spurious notifyAction(undefined) for an already-visible session.
     const isCurrentFocused = sessionId !== undefined && sessionId === currentSessionId
       && mainWindow !== undefined && !mainWindow.isDestroyed() && mainWindow.isFocused()
-    unreadPending = true
-    if (sessionId !== undefined && !isCurrentFocused && !unreadSessionQueue.includes(sessionId)) unreadSessionQueue.push(sessionId)
+    // Only track unread state when the notification is queued (non-focused
+    // session) or has no session at all (credential/remote notices still need
+    // tray attention). A focused-session notice does not set unreadPending so
+    // the queue and the flag never diverge.
+    if (sessionId === undefined || !isCurrentFocused) {
+      unreadPending = true
+      if (sessionId !== undefined && !unreadSessionQueue.includes(sessionId)) unreadSessionQueue.push(sessionId)
+    }
     if (desktopSettings.notifications.trayFlash) {
       tray?.flash()
       flashMainWindow()
@@ -1098,8 +1112,17 @@ async function main(): Promise<void> {
           if (mainWindow.isMinimized()) mainWindow.restore()
           mainWindow.show()
           mainWindow.focus()
-          // Pop the first pending session so successive clicks walk later ones.
-          const target = sessionId ?? unreadSessionQueue.shift()
+          // Remove the clicked notification's own session from the unread queue
+          // (if present) so the queue stays consistent; otherwise pop the next
+          // pending session for successive clicks.
+          let target: string | undefined
+          if (sessionId !== undefined) {
+            const i = unreadSessionQueue.indexOf(sessionId)
+            if (i !== -1) unreadSessionQueue.splice(i, 1)
+            target = sessionId
+          } else {
+            target = unreadSessionQueue.shift()
+          }
           if (unreadSessionQueue.length === 0) { unreadPending = false; tray?.stopFlash(); stopFlashMainWindow() }
           mainWindow.webContents.send(DESKTOP_IPC.notifyAction, target)
         } else {
@@ -1436,10 +1459,7 @@ async function main(): Promise<void> {
   const openFromTray = (): void => {
     tray?.stopFlash()
     stopFlashMainWindow()
-    // Pop the first pending session so successive tray clicks walk later ones.
-    const target = unreadSessionQueue.shift()
     const pending = unreadPending
-    if (unreadSessionQueue.length === 0) unreadPending = false
     // Directly show and focus the window, bypassing focusPrimaryWindow's
     // enteredWorkspace guard: a tray click must always reveal the window
     // so the user can return to a hidden app or act on unread messages.
@@ -1450,7 +1470,11 @@ async function main(): Promise<void> {
     } else {
       focusPrimaryWindow()
     }
+    // Pop the first pending session only after the window is confirmed live,
+    // so a destroyed window does not consume a queue entry the user never sees.
     if (!pending || mainWindow === undefined || mainWindow.isDestroyed()) return
+    const target = unreadSessionQueue.shift()
+    if (unreadSessionQueue.length === 0) unreadPending = false
     mainWindow.webContents.send(DESKTOP_IPC.notifyAction, target)
   }
   // Linux system trays require a raster icon; Windows uses its multi-size ICO.
@@ -1763,6 +1787,9 @@ async function main(): Promise<void> {
     quitConfirmation.dispose()
     backgroundNotice?.dispose()
     tray?.dispose()
+    // Close lingering sticky notifications so they do not outlive the process.
+    for (const notification of activeNotifications) { try { notification.close() } catch { /* best effort */ } }
+    activeNotifications.clear()
     stopAccount?.()
     if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) welcomeWindow.hide()
     if (mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.hide()
@@ -1786,6 +1813,8 @@ async function main(): Promise<void> {
       backgroundNotice?.dispose()
       updateJournal?.action('quit-requested')
       tray?.dispose()
+      for (const notification of activeNotifications) { try { notification.close() } catch { /* best effort */ } }
+      activeNotifications.clear()
       updateDialog.dispose()
       mandatoryUI?.dispose()
       // Installation preparation already awaited Platform storage cleanup.

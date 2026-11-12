@@ -557,17 +557,36 @@ jobs:
           LATEST_EOF
           )
           LATEST_NOTES="${LATEST_NOTES//__VERSION__/$VERSION}"
-          gh release delete "$LATEST_TAG" --yes --cleanup-tag 2>/dev/null || true
-          gh release create "$LATEST_TAG" \
-            "$ARTIFACTS"/*.AppImage \
-            "$ARTIFACTS"/*.deb \
-            "$ARTIFACTS"/SHA256SUMS.* \
-            "$ARTIFACTS"/*.yml \
-            --repo "${{ github.repository }}" \
-            --target "$GITHUB_SHA" \
-            --title "DeepSeek Harness ${VERSION} (Linux x64 · latest)" \
-            --notes "$LATEST_NOTES" \
-            --prerelease
+          # Update the latest release in place when it already exists, so the
+          # auto-update feed never disappears if gh release create errors out.
+          if gh release view "$LATEST_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            for asset in $(gh release view "$LATEST_TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].name' 2>/dev/null); do
+              gh release delete-asset "$LATEST_TAG" "$asset" --yes --repo "${{ github.repository }}" 2>/dev/null || true
+            done
+            gh release upload "$LATEST_TAG" \
+              "$ARTIFACTS"/*.AppImage \
+              "$ARTIFACTS"/*.deb \
+              "$ARTIFACTS"/SHA256SUMS.* \
+              "$ARTIFACTS"/*.yml \
+              --repo "${{ github.repository }}"
+            gh release edit "$LATEST_TAG" \
+              --repo "${{ github.repository }}" \
+              --target "$GITHUB_SHA" \
+              --title "DeepSeek Harness ${VERSION} (Linux x64 · latest)" \
+              --notes "$LATEST_NOTES" \
+              --prerelease
+          else
+            gh release create "$LATEST_TAG" \
+              "$ARTIFACTS"/*.AppImage \
+              "$ARTIFACTS"/*.deb \
+              "$ARTIFACTS"/SHA256SUMS.* \
+              "$ARTIFACTS"/*.yml \
+              --repo "${{ github.repository }}" \
+              --target "$GITHUB_SHA" \
+              --title "DeepSeek Harness ${VERSION} (Linux x64 · latest)" \
+              --notes "$LATEST_NOTES" \
+              --prerelease
+          fi
 
       - name: 刷新 linux-latest-official 自动更新源（官方构建版）
         if: (github.event_name == 'push' || inputs.publish) && env.BUILD_BRANCH == 'linux-package-official'
@@ -650,17 +669,34 @@ jobs:
           LATEST_EOF
           )
           LATEST_NOTES="${LATEST_NOTES//__VERSION__/$VERSION}"
-          gh release delete "$LATEST_TAG" --yes --cleanup-tag 2>/dev/null || true
-          gh release create "$LATEST_TAG" \
-            "$ARTIFACTS"/*.AppImage \
-            "$ARTIFACTS"/*.deb \
-            "$ARTIFACTS"/SHA256SUMS.* \
-            "$ARTIFACTS"/*.yml \
-            --repo "${{ github.repository }}" \
-            --target "$GITHUB_SHA" \
-            --title "DeepSeek Harness ${VERSION} (Linux x64 · latest-official)" \
-            --notes "$LATEST_NOTES" \
-            --prerelease
+          if gh release view "$LATEST_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            for asset in $(gh release view "$LATEST_TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].name' 2>/dev/null); do
+              gh release delete-asset "$LATEST_TAG" "$asset" --yes --repo "${{ github.repository }}" 2>/dev/null || true
+            done
+            gh release upload "$LATEST_TAG" \
+              "$ARTIFACTS"/*.AppImage \
+              "$ARTIFACTS"/*.deb \
+              "$ARTIFACTS"/SHA256SUMS.* \
+              "$ARTIFACTS"/*.yml \
+              --repo "${{ github.repository }}"
+            gh release edit "$LATEST_TAG" \
+              --repo "${{ github.repository }}" \
+              --target "$GITHUB_SHA" \
+              --title "DeepSeek Harness ${VERSION} (Linux x64 · latest-official)" \
+              --notes "$LATEST_NOTES" \
+              --prerelease
+          else
+            gh release create "$LATEST_TAG" \
+              "$ARTIFACTS"/*.AppImage \
+              "$ARTIFACTS"/*.deb \
+              "$ARTIFACTS"/SHA256SUMS.* \
+              "$ARTIFACTS"/*.yml \
+              --repo "${{ github.repository }}" \
+              --target "$GITHUB_SHA" \
+              --title "DeepSeek Harness ${VERSION} (Linux x64 · latest-official)" \
+              --notes "$LATEST_NOTES" \
+              --prerelease
+          fi
 
       - name: 同步 README 状态表
         if: github.event_name == 'push' || inputs.publish

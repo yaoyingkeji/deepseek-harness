@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import {
+  DESKTOP_NOTIFICATION_DEFAULTS,
   DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED,
   type DesktopNotificationCategory,
   type DesktopNotificationSettings,
@@ -20,13 +21,6 @@ export interface DesktopNotificationsRowInjected {
 const CATEGORIES: readonly DesktopNotificationCategory[] = [
   'approval', 'question', 'job', 'subagent', 'credential', 'remote', 'session', 'plugin', 'schedule', 'goal',
 ]
-
-/** Default settings shared with the Desktop shell (apps/desktop/src/settings.ts). */
-const DEFAULT_SETTINGS: DesktopNotificationSettings = {
-  approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
-  plugin: true, schedule: true, goal: true, focused: false, nonCurrentSession: true, trayFlash: true,
-  sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
-}
 
 /** Focus-mode switch key: whether notifications also appear while focused. */
 const FOCUSED_KEY = 'focused' as const
@@ -47,15 +41,14 @@ const TRAY_FLASH_KEY = 'trayFlash' as const
  */
 export function DesktopNotificationsRow({ bridge, t }:
   PropsRuntime<'settings.general.item'> & PropsLocale<'settings'> & InjectFace<DesktopNotificationsRowInjected>) {
-  const [settings, setSettings] = useState<DesktopNotificationSettings>({
-    approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
-    plugin: true, schedule: true, goal: true,
-    focused: false, nonCurrentSession: true, trayFlash: true,
-    sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
-  })
+  const [settings, setSettings] = useState<DesktopNotificationSettings>(DESKTOP_NOTIFICATION_DEFAULTS)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const touched = useRef(false)
+  // Monotonic generation for async operations so a stale result (e.g. a slow
+  // reset whose value arrives after the user toggled another switch) does not
+  // clobber the newer state.
+  const generation = useRef(0)
   // The persisted switches load asynchronously; once the user toggles one it
   // must not be clobbered by the slower read that raced the write.
   useEffect(() => {
@@ -68,6 +61,7 @@ export function DesktopNotificationsRow({ bridge, t }:
   if (bridge === undefined) return null
   const setEnabled = (category: DesktopNotificationSwitchKey, enabled: boolean): void => {
     touched.current = true
+    generation.current += 1
     setFailed(false)
     setBusy(true)
     const previous = settings
@@ -87,6 +81,7 @@ export function DesktopNotificationsRow({ bridge, t }:
   const allOn = CATEGORIES.every(category => settings[category])
   const applyAll = (): void => {
     touched.current = true
+    generation.current += 1
     setFailed(false)
     setBusy(true)
     const previous = settings
@@ -108,11 +103,12 @@ export function DesktopNotificationsRow({ bridge, t }:
   }
   const restoreDefaults = (): void => {
     touched.current = true
+    const gen = generation.current += 1
     setFailed(false)
     setBusy(true)
     const previous = settings
-    setSettings(DEFAULT_SETTINGS)
-    void bridge.reset().then((value) => { if (!touched.current) return; setSettings(value) }).catch(() => {
+    setSettings(DESKTOP_NOTIFICATION_DEFAULTS)
+    void bridge.reset().then((value) => { if (gen === generation.current) setSettings(value) }).catch(() => {
       setFailed(true)
       setSettings(previous)
     }).finally(() => { setBusy(false) })

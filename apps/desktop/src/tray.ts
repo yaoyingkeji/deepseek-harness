@@ -134,15 +134,17 @@ export class DesktopTray {
    */
   flash(): void {
     if (this.flashTimer !== undefined || this.tray === undefined) return
-    const { tray, normalIcon, dimIcon } = this
+    // Read this.normalIcon / this.dimIcon inside the interval callback rather
+    // than capturing them here, so a theme change during flashing swaps in the
+    // new icons immediately instead of fighting the timer with stale references.
     let showNormal = true
-    let lastIcon: NativeImage = normalIcon
+    let lastIcon: NativeImage = this.normalIcon
     this.flashTimer = setInterval(() => {
-      const next = showNormal ? normalIcon : dimIcon
+      const next = showNormal ? this.normalIcon : this.dimIcon
       // Skip redundant setImage calls: on some Linux SNI bridges every call
       // triggers a full D-Bus round-trip that can wedge the tray.
       if (next !== lastIcon) {
-        tray.setImage(next)
+        this.tray?.setImage(next)
         lastIcon = next
       }
       showNormal = !showNormal

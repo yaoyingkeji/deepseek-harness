@@ -16,7 +16,14 @@ static int read_png(const char *path, unsigned long **out_data, unsigned long *o
     png_infop info = png_create_info_struct(png);
     if (!info) { png_destroy_read_struct(&png, NULL, NULL); fclose(fp); return -1; }
 
+    /* rows and data are allocated after setjmp setup; the longjmp handler frees
+     * them if a libpng error fires after allocation but before they are released. */
+    png_bytep *rows = NULL;
+    png_bytep data = NULL;
+
     if (setjmp(png_jmpbuf(png))) {
+        free(rows);
+        free(data);
         png_destroy_read_struct(&png, &info, NULL);
         fclose(fp);
         return -1;
@@ -44,7 +51,9 @@ static int read_png(const char *path, unsigned long **out_data, unsigned long *o
 
     png_size_t rowbytes = png_get_rowbytes(png, info);
     png_bytep *rows = malloc(sizeof(png_bytep) * height);
+    if (!rows) { png_destroy_read_struct(&png, &info, NULL); fclose(fp); fprintf(stderr, "Out of memory (rows)\n"); return -1; }
     png_bytep data = malloc(rowbytes * height);
+    if (!data) { free(rows); png_destroy_read_struct(&png, &info, NULL); fclose(fp); fprintf(stderr, "Out of memory (data)\n"); return -1; }
     for (int y = 0; y < height; y++)
         rows[y] = data + y * rowbytes;
 
@@ -53,6 +62,7 @@ static int read_png(const char *path, unsigned long **out_data, unsigned long *o
     /* Build _NET_WM_ICON data: width, height, then ARGB pixels */
     unsigned long count = 2 + (unsigned long)width * height;
     unsigned long *icon_data = malloc(count * sizeof(unsigned long));
+    if (!icon_data) { free(rows); free(data); png_destroy_read_struct(&png, &info, NULL); fclose(fp); fprintf(stderr, "Out of memory (icon_data)\n"); return -1; }
     icon_data[0] = width;
     icon_data[1] = height;
 

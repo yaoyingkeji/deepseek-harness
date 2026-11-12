@@ -68,6 +68,14 @@ export type DesktopNotificationSettings = Record<DesktopNotificationCategory, bo
 /** Categories off by default because they can flood the user with notices. */
 export const DESKTOP_NOTIFICATION_RECOMMENDED_DISABLED: readonly DesktopNotificationCategory[] = ['subagent', 'credential', 'remote', 'session', 'plugin', 'schedule']
 
+/** Default notification settings shared with the Desktop shell (apps/desktop/src/settings.ts). */
+export const DESKTOP_NOTIFICATION_DEFAULTS: DesktopNotificationSettings = {
+  approval: true, question: true, job: true, subagent: false, credential: false, remote: false, session: false,
+  plugin: true, schedule: true, goal: true,
+  focused: false, nonCurrentSession: true, trayFlash: true,
+  sticky: { approval: false, question: false, job: false, subagent: false, credential: true, remote: true, session: false, plugin: false, schedule: false, goal: false },
+}
+
 /** Optional carrier API for the desktop notification category switches. */
 export interface DesktopNotificationsBridge {
   get(): Promise<DesktopNotificationSettings>

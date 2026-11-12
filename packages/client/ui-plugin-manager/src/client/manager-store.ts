@@ -43,6 +43,7 @@ import type { PluginTab } from './tab-ledger.ts'
 import { shortName } from './presentation.ts'
 import { BundleDetailController, type BundleDetailsState } from './detail-store.ts'
 import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
+import { desktopNotify as sendDesktopNotify } from '@deepseek-ai/dsh-client-ui-primitives'
 
 /**
  * Read whether a bundle has a pending management action.
@@ -1468,31 +1469,12 @@ export class PluginManagerController {
   /** Send a desktop notification for a completed or failed background install. */
   private desktopNotify(outcome: Extract<ManagerNotice, { kind: 'install' }>['outcome']): void {
     try {
-      const root = typeof document === 'undefined' ? undefined : document.documentElement
-      const zh = root === undefined ? false
-        : (root.lang || navigator.language || 'en').toLowerCase().startsWith('zh')
       const subject = this.getSnapshot().install.subject
       const name = subject?.name ?? subject?.spec ?? 'plugin'
       if (outcome === 'done') {
-        void (globalThis as typeof globalThis & { dshDesktop?: {
-          protocolVersion: number; notify?: (input: {
-            category: string; title: string; body: string; sessionId?: string
-          }) => Promise<void>
-        } }).dshDesktop?.notify?.({
-          category: 'plugin',
-          title: zh ? '插件安装完成' : 'Plugin installed',
-          body: zh ? `${name} 已安装` : `${name} installed`,
-        })
+        sendDesktopNotify('plugin', '插件安装完成', `${name} 已安装`, 'Plugin installed', `${name} installed`)
       } else if (outcome === 'failed' || outcome === 'unconfirmed' || outcome === 'unknown') {
-        void (globalThis as typeof globalThis & { dshDesktop?: {
-          protocolVersion: number; notify?: (input: {
-            category: string; title: string; body: string; sessionId?: string
-          }) => Promise<void>
-        } }).dshDesktop?.notify?.({
-          category: 'plugin',
-          title: zh ? '插件安装失败' : 'Plugin installation failed',
-          body: zh ? `${name} 安装失败` : `${name} installation failed`,
-        })
+        sendDesktopNotify('plugin', '插件安装失败', `${name} 安装失败`, 'Plugin installation failed', `${name} installation failed`)
       }
     } catch { /* ignore: notification delivery must never throw into the caller path */ }
   }
