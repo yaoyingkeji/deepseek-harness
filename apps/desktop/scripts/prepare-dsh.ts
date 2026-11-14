@@ -165,6 +165,18 @@ async function main(): Promise<void> {
             }
           }
           console.log(`desktop runtime: native Office engine version aligned to ${expectedVersion}`)
+          // npm package.json 的 optionalDependencies 不包含 linux-x64-glibc，
+          // selectOfficeEngine 和 electron-builder 配置都会回退到 wasm；将注入的引擎
+          // 声明写入 libreoffice-kit/package.json 的 optionalDependencies 使全链路一致。
+          const kitManifestPath = join(modules, '@deepseek-ai', 'libreoffice-kit', 'package.json')
+          const kitManifest = JSON.parse(readFileSync(kitManifestPath, 'utf8'))
+          const enginePackageName = `@deepseek-ai/libreoffice-kit-${nativeEngineSuffix}`
+          if (!kitManifest.optionalDependencies) kitManifest.optionalDependencies = {}
+          if (!Object.hasOwn(kitManifest.optionalDependencies, enginePackageName)) {
+            kitManifest.optionalDependencies[enginePackageName] = expectedVersion
+            writeFileSync(kitManifestPath, `${JSON.stringify(kitManifest, null, 2)}\n`)
+            console.log(`desktop runtime: declared ${enginePackageName} in libreoffice-kit optionalDependencies`)
+          }
         } else {
           console.log(`desktop runtime: no native Office engine tarball (DSH_NATIVE_ENGINE_TARBALL), WASM fallback may apply`)
         }
