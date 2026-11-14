@@ -22,7 +22,7 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 | 项目 | 状态 |
 |------|------|
-| **上游最新版本** | `v0.2.2-rc.2`（`dsh-v0.2.2-rc.2`） |
+| **上游最新版本** | `v0.2.2-rc.3`（`dsh-v0.2.2-rc.3`） |
 | **上游同步** | ✅ 已同步，0 commits behind |
 | **定制版 Linux 发行包**（`linux-custom-titlebar`） | ✅ `v0.2.2-alpha.2-linux-x64-custom` |
 | **官方版 Linux 发行包**（`linux-package-official`） | ✅ `v0.2.2-alpha.2-linux-x64-official` |
