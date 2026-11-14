@@ -6,12 +6,15 @@ import { isAbsolute, join, relative, sep } from 'node:path'
 
 /**
  * Require the declared native engine, or use WASM on other targets.
+ * Linux native engines carry a `-glibc` ABI suffix in their package names.
  * @param {{ optionalDependencies?: Record<string, string> }} manifest - Installed kit manifest.
  * @param {{ platform: string, arch: string }} target - Distribution platform and CPU.
  * @returns {string} Engine package suffix.
  */
 export function selectOfficeEngine(manifest, target) {
-  const native = `${target.platform}-${target.arch}`
+  const native = target.platform === 'linux'
+    ? `${target.platform}-${target.arch}-glibc`
+    : `${target.platform}-${target.arch}`
   return Object.hasOwn(manifest.optionalDependencies ?? {}, `@deepseek-ai/libreoffice-kit-${native}`) ? native : 'wasm'
 }
 
