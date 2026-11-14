@@ -110,6 +110,13 @@ jobs:
           echo "DSH_DESKTOP_LINUX_UPDATE_URL=https://github.com/yaoyingkeji/deepseek-harness/releases/download/linux-latest-official/" >> "$GITHUB_ENV"
           echo "DSH_DESKTOP_LINUX_RELEASE_NOTES=linux-package-official 分支构建 / Official upstream build" >> "$GITHUB_ENV"
 
+      - name: 下载原生 Linux Office 引擎
+        run: |
+          ENGINE_TARBALL="$RUNNER_TEMP/libreoffice-kit-linux-x64-glibc-0.2.3.tar.gz"
+          curl -fsSL "https://github.com/yaoyingkeji/dsh-libreoffice-kit/releases/download/libreoffice-kit-v0.2.3-linux-x64/libreoffice-kit-linux-x64-glibc-0.2.3.tar.gz" -o "$ENGINE_TARBALL"
+          ls -lh "$ENGINE_TARBALL"
+          echo "DSH_NATIVE_ENGINE_TARBALL=$ENGINE_TARBALL" >> "$GITHUB_ENV"
+
       - name: 打包 Linux AppImage + deb
         run: bash package-linux.sh
 
