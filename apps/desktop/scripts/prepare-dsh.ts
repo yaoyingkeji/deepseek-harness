@@ -159,7 +159,16 @@ async function main(): Promise<void> {
       }
     }
     const officeManifest = JSON.parse(readFileSync(join(modules, '@deepseek-ai/libreoffice-kit/package.json'), 'utf8'))
-    const officeEngine = selectOfficeEngine(officeManifest, target)
+    let officeEngine = selectOfficeEngine(officeManifest, target)
+    // 注入的原生引擎不在 npm package.json 的 optionalDependencies 中，
+    // selectOfficeEngine 会回退到 wasm；此处检测已注入的 prebuilds.json 并覆盖引擎选择。
+    if (target.platform === 'linux') {
+      const nativeEngineSuffix = `linux-${target.arch}-glibc`
+      if (existsSync(join(modules, '@deepseek-ai', `libreoffice-kit-${nativeEngineSuffix}`, 'prebuilds.json'))) {
+        officeEngine = nativeEngineSuffix
+        console.log(`desktop runtime: using native Office engine ${officeEngine}`)
+      }
+    }
     mkdirSync(DSH_OUTPUT_ROOT, { recursive: true })
     await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'runtime:materialize-modules', async () => {
       cpSync(modules, join(DSH_OUTPUT_ROOT, 'node_modules'), {
