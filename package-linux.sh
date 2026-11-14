@@ -54,7 +54,7 @@ step "prepare:packages"
 pnpm --filter @deepseek-ai/dsh-desktop run prepare:packages 2>&1 | tee "$LOGDIR/08-prepare-packages.log" | tail -10
 
 step "prepare:dsh"
-pnpm --filter @deepseek-ai/dsh-desktop run prepare:dsh 2>&1 | tee "$LOGDIR/09-prepare-dsh.log" | tail -20
+pnpm --filter @deepseek-ai/dsh-desktop run prepare:dsh -- --defer-runtime-smoke 2>&1 | tee "$LOGDIR/09-prepare-dsh.log" | tail -20
 
 step "electron-builder --linux AppImage"
 (
