@@ -2,7 +2,7 @@
 
 import { resolveMacOSSignatureCacheDirectory } from './macos-signature-cache-directory.mjs'
 import { packagingStep } from './packaging-step.mjs'
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -143,6 +143,21 @@ async function main(): Promise<void> {
     const targetName = resolveDesktopBuildTarget()
     const target = desktopTargetPlatform(targetName)
     const modules = join(BUILD_ROOT, 'node_modules')
+    // 注入 Linux 原生 Office 引擎（npm 未发布，从 GitHub Release 下载）
+    if (target.platform === 'linux') {
+      const nativeEngineSuffix = `linux-${target.arch}-glibc`
+      const nativeEngineDir = join(modules, '@deepseek-ai', `libreoffice-kit-${nativeEngineSuffix}`)
+      if (!existsSync(join(nativeEngineDir, 'prebuilds.json'))) {
+        const tarballPath = process.env.DSH_NATIVE_ENGINE_TARBALL
+        if (tarballPath && existsSync(tarballPath)) {
+          console.log(`desktop runtime: injecting native Office engine from ${tarballPath}`)
+          mkdirSync(nativeEngineDir, { recursive: true })
+          execFileSync('tar', ['xzf', tarballPath, '-C', nativeEngineDir], { stdio: 'inherit' })
+        } else {
+          console.log(`desktop runtime: no native Office engine tarball (DSH_NATIVE_ENGINE_TARBALL), WASM fallback may apply`)
+        }
+      }
+    }
     const officeManifest = JSON.parse(readFileSync(join(modules, '@deepseek-ai/libreoffice-kit/package.json'), 'utf8'))
     const officeEngine = selectOfficeEngine(officeManifest, target)
     mkdirSync(DSH_OUTPUT_ROOT, { recursive: true })
