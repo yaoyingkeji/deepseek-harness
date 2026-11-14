@@ -14,9 +14,11 @@ it.each([
   expect(selectOfficeEngine({ optionalDependencies }, { platform, arch })).toBe(expected)
 })
 
-it('selects a declared Linux native target without an OS-specific policy change', () => {
-  expect(selectOfficeEngine({ optionalDependencies: { '@deepseek-ai/libreoffice-kit-linux-x64': '1' } },
-    { platform: 'linux', arch: 'x64' })).toBe('linux-x64')
+it('selects a declared Linux native target with the glibc ABI suffix', () => {
+  expect(selectOfficeEngine(
+    { optionalDependencies: { '@deepseek-ai/libreoffice-kit-linux-x64-glibc': '1' } },
+    { platform: 'linux', arch: 'x64' },
+  )).toBe('linux-x64-glibc')
 })
 
 it('uses WASM when no native targets are declared', () => {
