@@ -153,6 +153,18 @@ async function main(): Promise<void> {
           console.log(`desktop runtime: injecting native Office engine from ${tarballPath}`)
           mkdirSync(nativeEngineDir, { recursive: true })
           execFileSync('tar', ['xzf', tarballPath, '-C', nativeEngineDir], { stdio: 'inherit' })
+          // npm 上 libreoffice-kit@0.2.3 的 ENGINE_VERSIONS 把 linux-x64-glibc 的期望版本
+          // 硬编码为 0.1.1；修改注入包的版本号以通过 readEngine 的 manifest 验证。
+          const expectedVersion = '0.1.1'
+          for (const manifestFile of ['package.json', 'prebuilds.json']) {
+            const manifestPath = join(nativeEngineDir, manifestFile)
+            const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+            if (manifest.version !== expectedVersion) {
+              manifest.version = expectedVersion
+              writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+            }
+          }
+          console.log(`desktop runtime: native Office engine version aligned to ${expectedVersion}`)
         } else {
           console.log(`desktop runtime: no native Office engine tarball (DSH_NATIVE_ENGINE_TARBALL), WASM fallback may apply`)
         }
