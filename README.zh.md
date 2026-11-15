@@ -39,6 +39,7 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 3. **系统托盘 + 关闭行为可配置**：关闭后驻留托盘；收到通知时图标闪烁（可开关）；通用设置可选「隐藏到托盘」或「退出应用」
 4. **桌面通知**：10 类场景弹出原生通知（审核请求 · 模型提问 · 后台任务 · 子代理结束 · 凭证需要 · 远程接入 · 新会话 · 插件操作 · 定时提醒 · Goal 状态），每类独立开关，另有「聚焦时不弹出」「非当前会话不弹出」「托盘闪烁」全局开关
 5. **自动更新**：指向 `linux-latest` Release，AppImage 支持自动下载安装
+6. **原生 Office 引擎**：内置 [`libreoffice-kit-linux-x64`](https://github.com/yaoyingkeji/dsh-libreoffice-kit/releases/tag/libreoffice-kit-v0.2.3-linux-x64) 原生引擎（v0.2.3），支持 DOCX / XLSX / PPTX 等 Office 文档的高保真转换（DOCX → PDF 等），无需额外安装 LibreOffice。引擎由 GitHub Actions 云端源码编译打包，构建产物发布于 [`dsh-libreoffice-kit`](https://github.com/yaoyingkeji/dsh-libreoffice-kit) 仓库
 
 #### 下载安装
 
@@ -66,6 +67,10 @@ sudo dpkg -i deepseek-harness_*_amd64.deb
 | 桌面通知设置 | 托盘闪烁与桌面通知 |
 | :---: | :---: |
 | ![桌面通知设置](docs/screenshots/linux-custom-titlebar/screenshot-05-settings.png) | ![托盘闪烁与桌面通知](docs/screenshots/linux-custom-titlebar/screenshot-06-tray-flash.gif) |
+
+| 测试原生引擎 libreoffice-kit-linux-x64（1） | 测试原生引擎 libreoffice-kit-linux-x64（2） |
+| :---: | :---: |
+| ![测试原生引擎1](docs/screenshots/linux-custom-titlebar/screenshot-07-native-engine-test-1.png) | ![测试原生引擎2](docs/screenshots/linux-custom-titlebar/screenshot-08-native-engine-test-2.png) |
 
 ### `linux-package-official` — 官方上游版
 
