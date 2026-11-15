@@ -14,6 +14,15 @@ type Entries = readonly (readonly [string, unknown])[]
 /** Levels a model offers when the switch is turned on, where the schema lists them: Off plus the common OpenAI-compatible trio. */
 const INITIAL_LEVELS: readonly string[] = ['off', 'low', 'medium', 'high']
 
+/** Known reasoning-level identifiers that have a localized label; unknown ones fall back to their raw value. */
+const LEVEL_LABEL_KEYS: Record<string, ModelsKey> = {
+  off: 'modelReasoningLevelOff',
+  low: 'modelReasoningLevelLow',
+  medium: 'modelReasoningLevelMedium',
+  high: 'modelReasoningLevelHigh',
+  minimal: 'modelReasoningLevelMinimal',
+}
+
 /** The wire value a level sends unless its row says otherwise; `null` is the Off entry that sends nothing. */
 function defaultValue(level: string): string | null {
   return level === 'off' ? null : level
@@ -137,6 +146,12 @@ export function ModelReasoningEfforts(props: ModelReasoningEffortsProps): ReactN
   const label = `${t('modelReasoning')} ${String(position)}`
   const used = entries?.map(([level]) => level) ?? []
 
+  /** Localized display name for a reasoning level; unknown identifiers fall back to their raw value. */
+  const levelLabel = (level: string): string => {
+    const key = LEVEL_LABEL_KEYS[level]
+    return key !== undefined ? t(key) : level
+  }
+
   const write = (next: Entries | undefined): void => { onChange(withEfforts(model, next)) }
   const replaceAt = (current: Entries, index: number, entry: readonly [string, unknown]): Entries =>
     current.map((existing, at) => at === index ? entry : existing)
@@ -223,15 +238,15 @@ export function ModelReasoningEfforts(props: ModelReasoningEffortsProps): ReactN
                   onChange={(event) => { changeLevel(entries, index, level, wire, event.target.value) }}
                 >
                   {choicesFor(level).map(choice => (
-                    <option key={choice} value={choice}>{choice}</option>
+                    <option key={choice} value={choice}>{levelLabel(choice)}</option>
                   ))}
                 </select>
                 <input
                   className={`${styles['input']} ${styles['modelReasoningValueInput']}`}
                   type="text"
                   value={typing?.level === level ? typing.text : typeof wire === 'string' ? wire : ''}
-                  placeholder={level === 'off' ? t('modelReasoningOffValuePlaceholder') : level}
-                  aria-label={`${level} ${t('modelReasoningValue')}`}
+                  placeholder={level === 'off' ? t('modelReasoningOffValuePlaceholder') : levelLabel(level)}
+                  aria-label={`${levelLabel(level)} ${t('modelReasoningValue')}`}
                   aria-invalid={!acceptedValue(level, wire)}
                   // Off only turns reasoning off; a value stored in cordis.patch.yml is shown and kept.
                   // A protocol accepting only its offered levels sends each under its own name.
@@ -242,7 +257,7 @@ export function ModelReasoningEfforts(props: ModelReasoningEffortsProps): ReactN
                 <button
                   type="button"
                   className={`${styles['iconButton']} ${styles['iconButtonDanger']}`}
-                  aria-label={`${t('modelReasoningRemove')} ${level}`}
+                  aria-label={`${t('modelReasoningRemove')} ${levelLabel(level)}`}
                   title={t('modelReasoningRemove')}
                   disabled={disabled}
                   onClick={() => { write(entries.filter((_entry, at) => at !== index)) }}
