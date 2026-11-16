@@ -1340,8 +1340,11 @@ async function main(): Promise<void> {
           return
         }
         if (state.phase === 'no_release') {
+          const noReleaseMessage = updates.selectedChannel === 'branch'
+            ? locale.messages.updateNoReleaseBranch
+            : locale.messages.updateNoRelease
           await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
-            message: locale.messages.updateNoRelease,
+            message: noReleaseMessage,
             detail: formatDesktopMessage(locale.messages.updateCurrentDetail, { version: app.getVersion() }) })
           return
         }

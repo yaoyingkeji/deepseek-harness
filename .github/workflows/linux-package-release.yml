@@ -191,8 +191,9 @@ jobs:
              - 定时提醒（调度任务到期时提醒）
              - Goal 状态（完成或阻塞时提醒）
              另有「聚焦时不弹出」「非当前会话不弹出」「托盘图标闪烁」三个全局开关
-          6. **自动更新** — 应用内「检查更新」指向 `linux-latest` 自动更新源，AppImage 支持自动下载安装
-          7. **原生 Office 引擎** — 内置 [`libreoffice-kit-linux-x64`](https://github.com/yaoyingkeji/dsh-libreoffice-kit/releases/tag/libreoffice-kit-v0.2.3-linux-x64) 原生引擎（v0.2.3），支持 DOCX / XLSX / PPTX 等 Office 文档的高保真转换（DOCX → PDF 等），无需额外安装 LibreOffice。引擎由 GitHub Actions 云端源码编译打包，构建产物发布于 [`dsh-libreoffice-kit`](https://github.com/yaoyingkeji/dsh-libreoffice-kit) 仓库
+          6. **自动更新与更新渠道** — 应用内「检查更新」默认指向 `linux-latest` 自动更新源（耀影科技更新源），AppImage 支持自动下载安装；内置三个更新渠道可选——正式版（stable）、开发版（nightly）、耀影科技更新源（branch，默认，只检查本源更新，不回退上游）。nightly/stable 渠道在无新版本时自动回退检查上游（stable + prerelease 双通道），上游有新版时提示用户前往 GitHub 下载
+          7. **deb 安装包** — 除 AppImage 外同步构建 `.deb` 安装包，支持 `dpkg -i` 安装到 Debian / Ubuntu / Deepin 等 dpkg 系统
+          8. **原生 Office 引擎** — 内置 [`libreoffice-kit-linux-x64`](https://github.com/yaoyingkeji/dsh-libreoffice-kit/releases/tag/libreoffice-kit-v0.2.3-linux-x64) 原生引擎（v0.2.3），支持 DOCX / XLSX / PPTX 等 Office 文档的高保真转换（DOCX → PDF 等），无需额外安装 LibreOffice。引擎由 GitHub Actions 云端源码编译打包，构建产物发布于 [`dsh-libreoffice-kit`](https://github.com/yaoyingkeji/dsh-libreoffice-kit) 仓库
 
           #### 界面截图
 
@@ -275,8 +276,9 @@ jobs:
              - Schedule reminders (scheduled task due)
              - Goal status (completed or blocked)
              Plus three global toggles: "Show while focused", "Non-current session", and "Tray icon flash"
-          6. **Auto-update** — In-app "Check for Updates" points to the `linux-latest` auto-update feed; AppImage auto-downloads and installs
-          7. **Native Office engine** — Bundles the [`libreoffice-kit-linux-x64`](https://github.com/yaoyingkeji/dsh-libreoffice-kit/releases/tag/libreoffice-kit-v0.2.3-linux-x64) native engine (v0.2.3) for high-fidelity conversion of Office documents (DOCX / XLSX / PPTX → PDF, etc.) — no external LibreOffice installation required. The engine is compiled and packaged from source via GitHub Actions; build artifacts are published in the [`dsh-libreoffice-kit`](https://github.com/yaoyingkeji/dsh-libreoffice-kit) repository
+          6. **Auto-update & update channels** — In-app "Check for Updates" defaults to the `linux-latest` auto-update feed (Yaoying Feed); AppImage auto-downloads and installs. Three update channels available: Stable, Development, and Yaoying Feed (branch, default — checks only this feed, no upstream fallback). When nightly/stable finds no newer version, it falls back to check upstream (stable + prerelease dual-channel) and prompts the user to download from GitHub if upstream has a newer release
+          7. **deb package** — In addition to AppImage, a `.deb` package is built for `dpkg -i` installation on Debian / Ubuntu / Deepin and other dpkg-based systems
+          8. **Native Office engine** — Bundles the [`libreoffice-kit-linux-x64`](https://github.com/yaoyingkeji/dsh-libreoffice-kit/releases/tag/libreoffice-kit-v0.2.3-linux-x64) native engine (v0.2.3) for high-fidelity conversion of Office documents (DOCX / XLSX / PPTX → PDF, etc.) — no external LibreOffice installation required. The engine is compiled and packaged from source via GitHub Actions; build artifacts are published in the [`dsh-libreoffice-kit`](https://github.com/yaoyingkeji/dsh-libreoffice-kit) repository
 
           #### Screenshots
 
@@ -492,8 +494,9 @@ jobs:
           5. **桌面通知** — 以下 10 类场景弹出原生通知，每类可独立开关，另有三项全局开关：
              · 审核请求 · 模型提问 · 后台任务 · 子代理结束 · 凭证需要
              · 远程接入 · 新会话 · 插件操作 · 定时提醒 · Goal 状态
-          6. **自动更新** — 应用内「检查更新」指向此 `linux-latest` 自动更新源，AppImage 支持自动下载安装
-          7. **原生 Office 引擎** — 内置 [`libreoffice-kit-linux-x64`](https://github.com/yaoyingkeji/dsh-libreoffice-kit/releases/tag/libreoffice-kit-v0.2.3-linux-x64) 原生引擎（v0.2.3），支持 DOCX / XLSX / PPTX 等 Office 文档的高保真转换（DOCX → PDF 等），无需额外安装 LibreOffice。引擎由 GitHub Actions 云端源码编译打包，构建产物发布于 [`dsh-libreoffice-kit`](https://github.com/yaoyingkeji/dsh-libreoffice-kit) 仓库
+          6. **自动更新与更新渠道** — 应用内「检查更新」默认指向此 `linux-latest` 自动更新源（耀影科技更新源），AppImage 支持自动下载安装；内置三个更新渠道可选——正式版（stable）、开发版（nightly）、耀影科技更新源（branch，默认，只检查本源更新，不回退上游）。nightly/stable 渠道在无新版本时自动回退检查上游（stable + prerelease 双通道），上游有新版时提示用户前往 GitHub 下载
+          7. **deb 安装包** — 除 AppImage 外同步构建 `.deb` 安装包，支持 `dpkg -i` 安装到 Debian / Ubuntu / Deepin 等 dpkg 系统
+          8. **原生 Office 引擎** — 内置 [`libreoffice-kit-linux-x64`](https://github.com/yaoyingkeji/dsh-libreoffice-kit/releases/tag/libreoffice-kit-v0.2.3-linux-x64) 原生引擎（v0.2.3），支持 DOCX / XLSX / PPTX 等 Office 文档的高保真转换（DOCX → PDF 等），无需额外安装 LibreOffice。引擎由 GitHub Actions 云端源码编译打包，构建产物发布于 [`dsh-libreoffice-kit`](https://github.com/yaoyingkeji/dsh-libreoffice-kit) 仓库
 
           ### 界面截图
 

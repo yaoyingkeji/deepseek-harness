@@ -65,7 +65,7 @@ export const LINUX_UPDATE_RELEASE_NOTES = `linux-custom-titlebar 分支更新
 export function resolveDesktopLinuxUpdateConfig(env, version) {
   const url = env[DESKTOP_LINUX_UPDATE_ENV]?.trim()
   return {
-    channel: 'nightly',
+    channel: 'branch',
     publicUrl: url === undefined || url === ''
       ? 'https://github.com/yaoyingkeji/deepseek-harness/releases/download/linux-latest/'
       : url,

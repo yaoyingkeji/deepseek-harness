@@ -15,7 +15,7 @@ import { discardDesktopUpdate } from './updates/electron-updater/discard.ts'
 const { autoUpdater } = electronUpdater
 
 /** Network error patterns from electron-updater / Node fetch failures. */
-const NETWORK_ERROR = /\b(?:ERR_CONNECTION_CLOSED|ERR_CONNECTION_RESET|ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|fetch failed|network error)\b/iu
+const NETWORK_ERROR = /\b(?:ERR_CONNECTION_CLOSED|ERR_CONNECTION_RESET|ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|fetch failed|network error|timed out|timeout)\b/iu
 
 function isNetworkError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
