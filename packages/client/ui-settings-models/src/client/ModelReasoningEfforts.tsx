@@ -21,6 +21,8 @@ const LEVEL_LABEL_KEYS: Record<string, ModelsKey> = {
   medium: 'modelReasoningLevelMedium',
   high: 'modelReasoningLevelHigh',
   minimal: 'modelReasoningLevelMinimal',
+  xhigh: 'modelReasoningLevelXhigh',
+  max: 'modelReasoningLevelMax',
 }
 
 /** The wire value a level sends unless its row says otherwise; `null` is the Off entry that sends nothing. */

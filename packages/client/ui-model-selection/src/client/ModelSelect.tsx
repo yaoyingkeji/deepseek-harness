@@ -128,13 +128,19 @@ export function ModelSelect(
   const currentChoice = choices[selectedIndex]
   const reasoning = currentChoice?.model.reasoning
   const effectiveEffort = state.current?.reasoningEffort ?? reasoning?.defaultEffort
+  /** Resolve a reasoning effort id to a localized display label. */
+  const effortLevelLabel = (effortId: string): string => {
+    const key = `effort.level.${effortId}`
+    const translated = t(key as Parameters<typeof t>[0])
+    return translated !== key ? translated : effortId
+  }
   const effortLabel = currentChoice === undefined
     ? undefined
     : reasoning === undefined
       ? state.retainedEffort
       : effectiveEffort === undefined
         ? t('effort.providerDefault')
-        : reasoning.efforts.find(level => level.id === effectiveEffort)?.name ?? effectiveEffort
+        : effortLevelLabel(effectiveEffort)
   const effortChoices = useMemo<readonly EffortChoice[]>(() => reasoning === undefined
     ? []
     : [
@@ -144,7 +150,7 @@ export function ModelSelect(
       ...reasoning.efforts.map((effort: ModelReasoningEffort) => ({
         key: `effort:${effort.id}`,
         effort: effort.id,
-        label: effort.name,
+        label: effortLevelLabel(effort.id),
       })),
     ], [reasoning, t])
   const { pending } = state

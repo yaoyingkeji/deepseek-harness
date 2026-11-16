@@ -66,18 +66,22 @@ async function fetchUpstreamLatestVersionLive(): Promise<string | undefined> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FALLBACK_HTTP_TIMEOUT_MS)
   try {
+    // Use the releases list endpoint (includes prereleases) instead of releases/latest,
+    // which excludes prereleases and returns 404 when upstream has only prereleases.
     const response = await fetch(
-      `https://api.github.com/repos/${UPSTREAM_REPO}/releases/latest`,
+      `https://api.github.com/repos/${UPSTREAM_REPO}/releases?per_page=1`,
       {
         headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
         signal: controller.signal,
       },
     )
     if (!response.ok) return undefined
-    const release = await response.json() as { tag_name?: string }
-    if (typeof release.tag_name !== 'string') return undefined
+    const releases = await response.json() as { tag_name?: string }[]
+    if (!Array.isArray(releases) || releases.length === 0) return undefined
+    const release = releases[0]
+    if (release === undefined || typeof release.tag_name !== 'string') return undefined
     // Strip "dsh-v" prefix to get the semver: dsh-v0.2.3-alpha.1 → 0.2.3-alpha.1
-    return release.tag_name.startsWith('dsh-') ? release.tag_name.slice(4) : release.tag_name
+    return release.tag_name.startsWith('dsh-v') ? release.tag_name.slice(5) : release.tag_name
   } catch {
     return undefined
   } finally {

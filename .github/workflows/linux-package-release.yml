@@ -117,15 +117,19 @@ jobs:
           ls -lh "$ENGINE_TARBALL"
           echo "DSH_NATIVE_ENGINE_TARBALL=$ENGINE_TARBALL" >> "$GITHUB_ENV"
 
-      - name: 打包 Linux AppImage + deb
-        run: bash package-linux.sh
-
       - name: 确定版本号
         id: version
         run: |
-          V=$(node -p "require('./apps/desktop/package.json').version")
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "version=$V"
+          PRODUCT_V=$(node -p "require('./apps/desktop/package.json').version")
+          DATE=$(date -u +%Y%m%d)
+          # 构建版本号 = 产品版本 + 日期 + run号，semver 下大于原版本，确保热更新能检测到新构建
+          BUILD_V="${PRODUCT_V}.${DATE}.${{ github.run_number }}"
+          echo "version=$BUILD_V" >> "$GITHUB_OUTPUT"
+          echo "version=$BUILD_V"
+          echo "DSH_DESKTOP_BUILD_VERSION=$BUILD_V" >> "$GITHUB_ENV"
+
+      - name: 打包 Linux AppImage + deb
+        run: bash package-linux.sh
 
       - name: 计算 SHA256SUMS
         run: |
