@@ -54,6 +54,7 @@ export function presentDesktopUpdate(state: DesktopUpdateState): DesktopUpdatePr
   return {
     phase: state.phase,
     ...(state.version === undefined ? {} : { version: state.version }),
+    ...(state.upstreamKind === undefined ? {} : { upstreamKind: state.upstreamKind }),
     ...(state.percent === undefined ? {} : { percent: Math.floor(state.percent) }),
     ...(state.transferred === undefined ? {} : { transferred: state.transferred }),
     ...(state.total === undefined ? {} : { total: state.total }),

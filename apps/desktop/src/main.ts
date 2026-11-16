@@ -1346,11 +1346,16 @@ async function main(): Promise<void> {
           return
         }
         if (state.phase === 'upstream_available') {
+          const messageKey = state.upstreamKind === 'stable'
+            ? locale.messages.updateUpstreamAvailableStable
+            : locale.messages.updateUpstreamAvailablePrerelease
           const result = await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
-            message: formatDesktopMessage(locale.messages.updateUpstreamAvailable, { version: state.version ?? '', current: app.getVersion() }),
-            buttons: [locale.messages.updateUpstreamViewOnGithub, locale.messages.updateClose], cancelId: 1 })
+            message: formatDesktopMessage(messageKey, { version: state.version ?? '', current: app.getVersion() }),
+            buttons: [locale.messages.updateUpstreamViewOnGithub, locale.messages.updateDownloadPackage, locale.messages.updateClose], cancelId: 2 })
           if (result.response === 0) {
             void shell.openExternal(`https://github.com/${UPSTREAM_REPO}/releases/latest`).catch(() => undefined)
+          } else if (result.response === 1) {
+            void shell.openExternal('https://github.com/yaoyingkeji/deepseek-harness/releases/tag/linux-latest').catch(() => undefined)
           }
           return
         }

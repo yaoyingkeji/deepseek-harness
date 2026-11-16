@@ -31,7 +31,11 @@ export function DesktopChannelRow({ useChannel, select, t }:
     </div>
     <Menu open={open} onClose={() => { setOpen(false) }} portal align="end"
       selectedId={channel ?? ''}
-      items={[{ id: 'stable', label: t('desktop.channel.stable') }, { id: 'nightly', label: t('desktop.channel.nightly') }]}
+      items={[
+        { id: 'stable', label: t('desktop.channel.stable') },
+        { id: 'nightly', label: t('desktop.channel.nightly') },
+        { id: 'branch', label: t('desktop.channel.branch') },
+      ]}
       onSelect={(id) => {
         setOpen(false)
         void select(id as DesktopUpdateChannel)
@@ -40,7 +44,8 @@ export function DesktopChannelRow({ useChannel, select, t }:
         aria-busy={busy} aria-label={t('desktop.channel.title')} aria-haspopup="menu" aria-expanded={open}
         onClick={() => { setOpen(!open) }}>
         {channel === undefined || channel === null
-          ? t('desktop.channel.unavailable') : t(channel === 'stable' ? 'desktop.channel.stable' : 'desktop.channel.nightly')}
+          ? t('desktop.channel.unavailable')
+          : t(channel === 'stable' ? 'desktop.channel.stable' : channel === 'branch' ? 'desktop.channel.branch' : 'desktop.channel.nightly')}
         {busy ? <IconLoadingOutlineRegular className={css.spinner} /> : <IconChevronDownOutlineRegular className={css.chevron} />}
       </button>} />
   </div>

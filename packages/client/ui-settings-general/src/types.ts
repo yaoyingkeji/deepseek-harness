@@ -23,6 +23,7 @@ export type DesktopUpdateFailureKind =
 export interface DesktopUpdatePresentation {
   readonly phase: 'idle' | 'checking' | 'available' | 'upstream_available' | 'no_release' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
   readonly version?: string
+  readonly upstreamKind?: 'stable' | 'prerelease'
   readonly percent?: number
   readonly transferred?: number
   readonly total?: number
@@ -94,7 +95,7 @@ export interface DesktopUpdateView {
 }
 
 /** Shell-owned channel choices exposed through the isolated preload. */
-export type DesktopUpdateChannel = 'nightly' | 'stable'
+export type DesktopUpdateChannel = 'nightly' | 'stable' | 'branch'
 
 /** Current runtime selection and application status; failure never implies a successful switch. */
 export interface DesktopChannelState {

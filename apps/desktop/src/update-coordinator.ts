@@ -58,47 +58,65 @@ export function desktopUpdateReleaseNotes(updateInfo: UpdateInfo): string | unde
  * to stay well within the 60 req/hour unauthenticated GitHub API rate limit.
  * @returns Latest upstream version string, or undefined on any error.
  */
-let upstreamVersionCache: { version: string | undefined; networkFailed: boolean; expires: number } | undefined
+let upstreamVersionCache: { stableVersion: string | undefined; prereleaseVersion: string | undefined; networkFailed: boolean; expires: number } | undefined
 
 async function fetchUpstreamLatestVersion(): Promise<UpstreamCheckResult> {
   const now = Date.now()
   if (upstreamVersionCache !== undefined && upstreamVersionCache.expires > now) {
-    return { version: upstreamVersionCache.version, networkFailed: upstreamVersionCache.networkFailed }
+    return { stableVersion: upstreamVersionCache.stableVersion, prereleaseVersion: upstreamVersionCache.prereleaseVersion, networkFailed: upstreamVersionCache.networkFailed }
   }
   const result = await fetchUpstreamLatestVersionLive()
-  upstreamVersionCache = { version: result.version, networkFailed: result.networkFailed, expires: now + UPSTREAM_CACHE_TTL_MS }
+  upstreamVersionCache = { stableVersion: result.stableVersion, prereleaseVersion: result.prereleaseVersion, networkFailed: result.networkFailed, expires: now + UPSTREAM_CACHE_TTL_MS }
   return result
 }
 
-/** Result of a live upstream version check: either a version or a network failure flag. */
+/** Result of a live upstream version check: stable/prerelease versions and a network failure flag. */
 interface UpstreamCheckResult {
-  readonly version: string | undefined
+  readonly stableVersion: string | undefined
+  readonly prereleaseVersion: string | undefined
   readonly networkFailed: boolean
+}
+
+/**
+ * Parse a release tag name into a semver string by stripping the "dsh-v" prefix.
+ * dsh-v0.2.3-alpha.1 → 0.2.3-alpha.1; v0.2.3 → v0.2.3 (left as-is when prefix is absent).
+ */
+function parseReleaseTag(tagName: string): string {
+  return tagName.startsWith('dsh-v') ? tagName.slice(5) : tagName
 }
 
 async function fetchUpstreamLatestVersionLive(): Promise<UpstreamCheckResult> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FALLBACK_HTTP_TIMEOUT_MS)
   try {
-    // Use the releases list endpoint (includes prereleases) instead of releases/latest,
-    // which excludes prereleases and returns 404 when upstream has only prereleases.
+    // Fetch up to 10 releases to distinguish stable (non-prerelease) from prerelease versions.
     const response = await fetch(
-      `https://api.github.com/repos/${UPSTREAM_REPO}/releases?per_page=1`,
+      `https://api.github.com/repos/${UPSTREAM_REPO}/releases?per_page=10`,
       {
         headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
         signal: controller.signal,
       },
     )
-    if (!response.ok) return { version: undefined, networkFailed: false }
-    const releases = await response.json() as { tag_name?: string }[]
-    if (!Array.isArray(releases) || releases.length === 0) return { version: undefined, networkFailed: false }
-    const release = releases[0]
-    if (release === undefined || typeof release.tag_name !== 'string') return { version: undefined, networkFailed: false }
-    // Strip "dsh-v" prefix to get the semver: dsh-v0.2.3-alpha.1 → 0.2.3-alpha.1
-    const version = release.tag_name.startsWith('dsh-v') ? release.tag_name.slice(5) : release.tag_name
-    return { version, networkFailed: false }
+    if (!response.ok) return { stableVersion: undefined, prereleaseVersion: undefined, networkFailed: false }
+    const releases = await response.json() as { tag_name?: string; prerelease?: boolean }[]
+    if (!Array.isArray(releases) || releases.length === 0) {
+      return { stableVersion: undefined, prereleaseVersion: undefined, networkFailed: false }
+    }
+    let stableVersion: string | undefined
+    let prereleaseVersion: string | undefined
+    for (const release of releases) {
+      if (release === undefined || typeof release.tag_name !== 'string') continue
+      const version = parseReleaseTag(release.tag_name)
+      if (release.prerelease === true) {
+        if (prereleaseVersion === undefined) prereleaseVersion = version
+      } else {
+        if (stableVersion === undefined) stableVersion = version
+      }
+      if (stableVersion !== undefined && prereleaseVersion !== undefined) break
+    }
+    return { stableVersion, prereleaseVersion, networkFailed: false }
   } catch {
-    return { version: undefined, networkFailed: true }
+    return { stableVersion: undefined, prereleaseVersion: undefined, networkFailed: true }
   } finally {
     clearTimeout(timer)
   }
@@ -378,10 +396,26 @@ export class DesktopUpdateCoordinator {
         branchCheckFailed = true
         branchNetworkFailed = isNetworkError(branchError)
       }
-      // Level 2: fall back to upstream GitHub releases
+      // Level 2: fall back to upstream GitHub releases (skip for 'branch' channel)
+      if (this.channel === 'branch') {
+        // Branch-only mode: do not fall back to upstream; report idle or error.
+        this.release = { kind: 'none' }
+        if (branchNetworkFailed) {
+          return this.setState(this.failure(new Error('desktop update: could not reach update server (network error)'), 'check'))
+        }
+        if (branchCheckFailed) {
+          return this.setState({ phase: 'no_release' })
+        }
+        return this.setState({ phase: 'idle' })
+      }
       const upstream = await fetchUpstreamLatestVersion()
-      if (upstream.version !== undefined && gt(upstream.version, this.currentVersion())) {
-        return this.setState({ phase: 'upstream_available', version: upstream.version })
+      const currentVersion = this.currentVersion()
+      // Prefer stable release, then prerelease
+      if (upstream.stableVersion !== undefined && gt(upstream.stableVersion, currentVersion)) {
+        return this.setState({ phase: 'upstream_available', version: upstream.stableVersion, upstreamKind: 'stable' })
+      }
+      if (upstream.prereleaseVersion !== undefined && gt(upstream.prereleaseVersion, currentVersion)) {
+        return this.setState({ phase: 'upstream_available', version: upstream.prereleaseVersion, upstreamKind: 'prerelease' })
       }
       // Both branch and upstream have nothing newer
       this.release = { kind: 'none' }

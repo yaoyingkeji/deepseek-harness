@@ -65,6 +65,8 @@ export type DesktopUpdatePreparationFailureKind = 'stop-failed' | 'tasks-changed
 export interface DesktopUpdateState {
   readonly phase: 'idle' | 'checking' | 'available' | 'upstream_available' | 'no_release' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
   readonly version?: string
+  /** Whether an upstream update is a stable release or a prerelease. */
+  readonly upstreamKind?: 'stable' | 'prerelease'
   /** Markdown release notes carried by the update feed, shown in the update prompt. */
   readonly notes?: string
   readonly message?: string
@@ -107,6 +109,7 @@ export type DesktopUpdateFailureKind =
 export interface DesktopUpdatePresentation {
   readonly phase: DesktopUpdateState['phase']
   readonly version?: string
+  readonly upstreamKind?: 'stable' | 'prerelease'
   readonly percent?: number
   readonly transferred?: number
   readonly total?: number
