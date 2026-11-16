@@ -17,7 +17,7 @@ import { desktopWebsiteInstallerUrl } from './desktop-auto-update-environment.mj
 const routeSchema = z.object({
   runId: z.string().regex(/^[1-9]\d*$/u), attempt: z.string().regex(/^[1-9]\d*$/u),
   commit: z.string().regex(/^[a-f0-9]{40}$/u), sourceRef: z.string(), runnerName: z.string(), runnerLabel: z.string(),
-  target: z.enum(['mac-arm64', 'mac-x64', 'win-x64']), channel: z.enum(['nightly', 'stable']),
+  target: z.enum(['mac-arm64', 'mac-x64', 'win-x64', 'linux-x64']), channel: z.enum(['nightly', 'stable']),
   preset: z.enum(['test', 'production']),
 })
 

@@ -8,7 +8,7 @@ export const desktopPackageWorkflows = {
   'win-x64': '.github/workflows/windows-package.yml',
 } as const
 
-const targetSchema = z.enum(['mac-arm64', 'mac-x64', 'win-x64'])
+const targetSchema = z.enum(['mac-arm64', 'mac-x64', 'win-x64', 'linux-x64'])
 
 /** Machine labels are unique; a scalar target is shorthand for a one-element target list. */
 export const desktopPublishRunnersSchema = z.record(z.string(), z.object({
