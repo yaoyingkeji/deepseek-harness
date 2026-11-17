@@ -22,7 +22,7 @@ type InvokeHandler = (event: InvokeEvent, ...args: unknown[]) => unknown
 const fileDrag = vi.hoisted(() => ({ dispose: vi.fn<() => Promise<void>>(), install: vi.fn() }))
 vi.mock('../src/file-drag.ts', () => ({ installDesktopFileDrag: () => { fileDrag.install(); return fileDrag.dispose } }))
 
-vi.mock('../src/web-document.ts', () => ({ serveWebDocument: vi.fn(), forwardWebRequest: vi.fn(), removeLegacyHostCookies: harness.removeLegacyHostCookies }))
+vi.mock('../src/web-document.ts', () => ({ serveWebDocument: vi.fn(), forwardWebRequest: vi.fn(), removeLegacyHostCookies: vi.fn(async () => {}) }))
 vi.mock('../src/operation-report-job.ts', () => ({ runOperationReportJob: vi.fn(async () => ({ appended: false, timedOut: false, cancelled: false })) }))
 // Report persistence has its own unit tests; here it resolves within microtasks so the fatal
 // dialog never outlives the test that triggered it.
