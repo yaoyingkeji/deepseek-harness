@@ -13,7 +13,7 @@ const requestSchema = z.object({ source: z.object({
   repository: z.string(), runId: z.string(), attempt: z.string(), commit: z.string().regex(/^[a-f0-9]{40}$/u),
   workflowCommit: z.string(), sourceRef: z.string().min(1),
   channel: z.enum(['nightly', 'stable']),
-  runnerName: z.string(), target: z.enum(['mac-arm64', 'mac-x64', 'win-x64']), preset: z.enum(['test', 'production']),
+  runnerName: z.string(), target: z.enum(['mac-arm64', 'mac-x64', 'win-x64', 'linux-x64']), preset: z.enum(['test', 'production']),
   qualification: z.enum(['signed', 'notarized', 'unsigned', 'unnotarized']),
 }).refine(source => source.preset === 'test' || /^(?:master|dsh-v[0-9][0-9A-Za-z.-]*)$/u.test(source.sourceRef),
   'Production source must be master or dsh-v*') })
@@ -28,7 +28,7 @@ export interface DesktopPublishRoute {
   readonly channel: 'nightly' | 'stable'
   readonly runnerName: string
   readonly runnerLabel: string
-  readonly target: 'mac-arm64' | 'mac-x64' | 'win-x64'
+  readonly target: 'mac-arm64' | 'mac-x64' | 'win-x64' | 'linux-x64'
   readonly preset: 'test' | 'production'
 }
 
