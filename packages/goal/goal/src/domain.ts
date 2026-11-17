@@ -100,6 +100,7 @@ export type GoalErrorCode =
   | 'GOAL_INVALID_BLOCK_REASON'
   | 'GOAL_INVALID_EDIT'
   | 'GOAL_INVALID_TRANSITION'
+  | 'GOAL_STATE_CORRUPT'
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
@@ -112,7 +113,7 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'goal/changed'(this: import('@deepseek-ai/dsh-scope').Scoped<Agent>, payload: { agent: Agent; change: GoalChanged }): void
-	    /** Unscoped notification emitted when a goal is completed or blocked. */
-	    'goal/completed-or-blocked'(payload: { sessionId: string; operation: 'complete' | 'block'; objective?: string }): void
+    /** Unscoped notification emitted when a goal is completed or blocked. */
+    'goal/completed-or-blocked'(payload: { sessionId: string; operation: 'complete' | 'block'; objective?: string }): void
   }
 }
