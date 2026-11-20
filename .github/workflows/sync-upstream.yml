@@ -1,0 +1,213 @@
+# 每日检查并同步上游 deepseek-ai/deepseek-harness：
+#   1) 代码：把 upstream/master 合并进本 fork 的 master（--no-ff，保留上游全部提交历史）
+#   2) 标签：为 fork 缺失的上游 tag 建同名 lightweight tag（指向同一 commit）
+#   3) 发布：为 fork 缺失的上游 release 复制同名 release（正文/预发布标记原样）
+#
+# 注意：schedule 只在默认分支生效，所以本文件必须位于默认分支。
+# 本 workflow 只操作 master 分支与 dsh-v* 标签，绝不触碰 fork 自有发布
+# （如 *-linux-x64-*、linux-latest 等）。
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      merge_strategy:
+        description: '代码同步策略'
+        type: choice
+        options: [merge, skip]
+        default: merge
+      sync_tags:
+        description: '同步上游 tag'
+        type: boolean
+        default: true
+      sync_releases:
+        description: '同步上游 release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: deepseek-ai/deepseek-harness
+  TARGET_BRANCH: master
+  TAG_PREFIX: dsh-v
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Resolve inputs
+        id: opt
+        run: |
+          echo "strategy=${{ github.event_name == 'workflow_dispatch' && inputs.merge_strategy || 'merge' }}" >> "$GITHUB_OUTPUT"
+          echo "tags=${{ github.event_name != 'workflow_dispatch' || inputs.sync_tags }}" >> "$GITHUB_OUTPUT"
+          echo "releases=${{ github.event_name != 'workflow_dispatch' || inputs.sync_releases }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Configure git identity
+        run: |
+          git config user.name  'yaoyingkeji'
+          git config user.email 'noreply@yaoyingkeji.github.com'
+
+      - name: Fetch upstream
+        id: fetch
+        run: |
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null || \
+            git remote set-url upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --no-tags upstream master
+          UP_SHA=$(git rev-parse upstream/master)
+          echo "up_sha=$UP_SHA" >> "$GITHUB_OUTPUT"
+          echo "up_short=${UP_SHA:0:12}" >> "$GITHUB_OUTPUT"
+          MERGE_BASE=$(git merge-base HEAD "$UP_SHA")
+          if [ "$MERGE_BASE" = "$UP_SHA" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+            echo "上游 master 已全部包含在本分支中（$UP_SHA），无需合并。"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+            echo "上游有新提交：$(git rev-list --count "$MERGE_BASE..$UP_SHA") 个"
+          fi
+
+      - name: Merge upstream master
+        id: merge
+        if: steps.fetch.outputs.up_to_date == 'false' && steps.opt.outputs.strategy == 'merge'
+        run: |
+          if git merge --no-ff --no-edit upstream/master \
+               -m "同步上游 master (${{ steps.fetch.outputs.up_short }}) 到 ${TARGET_BRANCH}"; then
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "merged=conflict" >> "$GITHUB_OUTPUT"
+            git merge --abort || true
+          fi
+
+      - name: Push merge commit
+        if: steps.merge.outputs.merged == 'true'
+        run: git push origin "HEAD:${TARGET_BRANCH}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Open pull request on conflict
+        if: steps.merge.outputs.merged == 'conflict'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UP_SHORT: ${{ steps.fetch.outputs.up_short }}
+        run: |
+          BR="sync/upstream-$(date -u +%Y%m%d-%H%M)"
+          git checkout -B "$BR"
+          git merge --no-ff --no-edit upstream/master >/dev/null 2>&1 || true
+          CONFLICTS=$(git diff --name-only --diff-filter=U || true)
+          git add -A
+          git -c core.editor=true commit -m "同步上游 master (${UP_SHORT})：含未解决冲突，需人工处理" || true
+          git push origin "$BR"
+          {
+            echo "自动同步上游失败：\`master\` 与上游 \`${UP_SHORT}\` 存在冲突，需要人工解决。"
+            echo
+            echo '```'
+            echo "$CONFLICTS"
+            echo '```'
+            echo
+            echo '_本 PR 由每日同步 workflow 自动创建。_'
+          } > /tmp/pr-body.md
+          gh pr create --base "${TARGET_BRANCH}" --head "$BR" \
+            --title "同步上游 master (${UP_SHORT})：存在冲突需人工处理" \
+            --body-file /tmp/pr-body.md || true
+
+      - name: Sync upstream tags
+        if: always() && steps.opt.outputs.tags == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -u
+          # 逐页拉取上游 tag，只关心 dsh-v* 前缀
+          fetch_tags() {  # $1=repo  $2=输出文件  $3=jq 表达式
+            : > "$2"
+            for page in 1 2 3 4 5; do
+              body=$(gh api "repos/$1/tags?per_page=100&page=${page}" 2>/dev/null) || break
+              if [ -z "$body" ] || [ "$body" = "[]" ]; then break; fi
+              printf '%s' "$body" | jq -r "$3" >> "$2"
+              printf '%s' "$body" | jq -e 'length < 100' >/dev/null 2>&1 && break
+            done
+          }
+          fetch_tags "${UPSTREAM_REPO}" /tmp/up-tags.txt '.[] | "\(.name) \(.commit.sha)"'
+          fetch_tags "${GITHUB_REPOSITORY}" /tmp/have-tags.txt '.[].name' 
+
+          created=0
+          while read -r name sha; do
+            case "$name" in "${TAG_PREFIX}"*) ;; *) continue ;; esac
+            grep -qxF "$name" /tmp/have-tags.txt && continue
+            if gh api "repos/${GITHUB_REPOSITORY}/git/refs" -X POST \
+                 -f "ref=refs/tags/${name}" -f "sha=${sha}" >/dev/null 2>&1; then
+              echo "  + tag ${name} -> ${sha:0:12}"
+              created=$((created+1))
+            else
+              echo "  ! 跳过 tag ${name}（commit 不在本仓库或已存在）"
+            fi
+          done < /tmp/up-tags.txt
+          echo "新增 tag: ${created}"
+
+      - name: Sync upstream releases
+        if: always() && steps.opt.outputs.releases == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -u
+          : > /tmp/up-rel.json
+          for page in 1 2 3 4 5; do
+            body=$(gh api "repos/${UPSTREAM_REPO}/releases?per_page=100&page=${page}" 2>/dev/null) || break
+            if [ -z "$body" ] || [ "$body" = "[]" ]; then break; fi
+            printf '%s' "$body" | jq -c '.[]' >> /tmp/up-rel.json
+            printf '%s' "$body" | jq -e 'length < 100' >/dev/null 2>&1 && break
+          done
+
+          gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '.[].tag_name' > /tmp/have-rel.txt || true
+
+          # 逐个 tag 判断，避免大 JSON 拼装
+          jq -r 'select(.draft == false) | .tag_name' /tmp/up-rel.json 2>/dev/null | sort -u |
+          while read -r tag; do
+            case "$tag" in "${TAG_PREFIX}"*) ;; *) continue ;; esac
+            grep -qxF "$tag" /tmp/have-rel.txt && continue
+            # tag 必须已存在（上一步或历史同步创建）
+            if ! gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
+              echo "  ! 跳过 release ${tag}（tag 不存在）"; continue
+            fi
+            if gh api "repos/${UPSTREAM_REPO}/releases/tags/${tag}" > /tmp/rel.json 2>/dev/null; then
+              NAME=$(jq -r '.name // ""' /tmp/rel.json)
+              PRE=$(jq -r '.prerelease' /tmp/rel.json)
+              jq -r '.body // ""' /tmp/rel.json > /tmp/rel-body.md
+              if gh api "repos/${GITHUB_REPOSITORY}/releases" -X POST \
+                   -f "tag_name=${tag}" -f "name=${NAME}" \
+                   -F "body=@/tmp/rel-body.md" \
+                   -F "prerelease=${PRE}" -F "draft=false" >/dev/null 2>&1; then
+                echo "  + release ${tag}"
+              else
+                echo "  ! release ${tag} 创建失败"
+              fi
+            fi
+          done
+          echo "release 同步完成"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## 上游同步结果"
+            echo
+            echo "- 上游 master: \`${{ steps.fetch.outputs.up_short }}\`"
+            echo "- 是否已最新: \`${{ steps.fetch.outputs.up_to_date }}\`"
+            echo "- 合并结果: \`${{ steps.merge.outputs.merged || 'skipped' }}\`"
+            echo "- 分支 head: \`$(git rev-parse --short HEAD)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
