@@ -8,6 +8,74 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 文档：[https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
 
+## 仓库说明
+
+> 本仓库是 DeepSeek Harness 的分支构建仓库（耀影科技）。本分支 **`linux-package-official`** 为**官方上游版**：
+> 与上游 `deepseek-ai/deepseek-harness` 的 `master` 功能完全一致，仅额外注入 Linux 打包基础设施，
+> 不做任何 UI 或功能性修改。适合需要官方原版体验、但需要 Linux 安装包的用户。
+
+| 分支 | 用途 | 构建产物 |
+|------|------|----------|
+| **[`linux-custom-titlebar`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-custom-titlebar)**（默认） | 定制优化版：自定义标题栏、系统托盘、桌面通知、可配置关闭行为、多更新渠道 | `v*-linux-x64-custom` |
+| **[`linux-package-official`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-package-official)** | 官方上游版：仅引入 Linux 打包基建，功能与上游一致 | `v*-linux-x64-official` |
+| **[`master`](https://github.com/yaoyingkeji/deepseek-harness/tree/master)** | 纯上游镜像，不含任何 Linux 分支改动 | — |
+
+### `linux-package-official` — 官方上游版
+
+#### 定位
+
+与上游 `master` **功能完全一致**，仅额外注入 Linux 打包基础设施。不含自定义标题栏、系统托盘、
+额外桌面通知、关闭行为开关等任何定制 UI 或功能性改动。
+
+#### 相对上游注入的内容
+
+| 类别 | 内容 |
+|------|------|
+| **构建目标** | 新增 `linux-x64` 打包目标（`apps/desktop/scripts/desktop-build-paths.*`、`package-target.ts`） |
+| **electron-builder 配置** | Linux 段配置：`AppImage` + `deb` 双产物、图标目录、`maintainer` / `synopsis` / `executableName`、`StartupWMClass` |
+| **自动更新源** | 「检查更新」固定指向 `linux-latest-official` Release（`electron-builder-config.mjs` 中的 `resolveDesktopLinuxUpdateConfig`） |
+| **构建脚本** | `package-linux.sh`（本地一键 AppImage + deb 打包） |
+| **CI 工作流** | `.github/workflows/linux-package-release.yml`：云端构建、发布、刷新更新源、同步 README 状态 |
+| **发布/上传适配** | `desktop-publish-*` 系列脚本与 `retain-desktop-upload` 对 `linux-x64` 目标的处理（Linux 产物直接由工作流发布，不走 COS 保留上传） |
+| **发布者包类型** | `apps/desktop-publisher/src/` 中 `DesktopAutoUpdateTarget`、zod schema、`desktopPackageWorkflows` 等加入 `linux-x64` |
+
+#### 与上游的已知差异（说明）
+
+- `apps/desktop/package.json` 增加 `homepage` 字段。
+- Linux 更新提示文案（`apps/desktop/src/locale.ts`、`ui-settings-general` 的 `desktop.update.*`）中，
+  预留了 `no_release`（本源暂无发行包）与 `upstream_available`（回退检查发现上游有新版本）两个
+  界面状态的多语言文案。**当前更新协调器（`update-coordinator.ts`）与上游一致，不会产生这两个状态**，
+  因此属于预留文案，不影响任何现有行为。
+- 为使包内脚本可用，保留了 `apps/desktop/scripts/desktop-auto-update-environment.*`、
+  `desktop-publish-targets.ts`、`desktop-release-store.ts` 的本地副本，构建链引用本地版本。
+
+#### 构建与发布
+
+| 项目 | 说明 |
+|------|------|
+| **构建工作流** | [Linux x64 打包与发布（AppImage + deb）](https://github.com/yaoyingkeji/deepseek-harness/actions/workflows/linux-package-release.yml) |
+| **发行产物** | `v*-linux-x64-official`（AppImage + `.deb`） |
+| **自动更新源** | [`linux-latest-official`](https://github.com/yaoyingkeji/deepseek-harness/releases/tag/linux-latest-official) |
+| **原生 Office 引擎** | 不内置（与上游一致）；如有需要请使用 `linux-custom-titlebar` 分支产物 |
+
+#### 下载安装
+
+前往 [Releases 页面](https://github.com/yaoyingkeji/deepseek-harness/releases)，查找 `v*-linux-x64-official` 标签：
+
+```bash
+# AppImage
+chmod +x deepseek-harness-*-linux-x64.AppImage
+./deepseek-harness-*-linux-x64.AppImage
+
+# deb
+sudo dpkg -i deepseek-harness_*_amd64.deb
+```
+
+### `master` — 纯上游镜像
+
+持续同步 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 `master`，
+不做任何额外改动，并同步上游的 tag 与 release。用于版本对比与上游追踪。
+
 ## 开发者预览
 
 DeepSeek Harness 处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
