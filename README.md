@@ -32,7 +32,7 @@ What is added on top of upstream:
 |------|---------|
 | **Build target** | `linux-x64` packaging target (`desktop-build-paths.*`, `package-target.ts`) |
 | **electron-builder** | Linux section: `AppImage` + `deb`, icon set, `maintainer` / `synopsis` / `executableName`, `StartupWMClass` |
-| **Update feed** | "Check for updates" points at the `linux-latest-official` release |
+| **Update feed** | ✅ `linux-latest` → `0.2.2-rc.5` |
 | **Build script** | `package-linux.sh` |
 | **CI workflow** | `.github/workflows/linux-package-release.yml` |
 | **Publish/upload** | `desktop-publish-*` and retain/upload paths handle `linux-x64` (artifacts are published by the workflow, not COS) |

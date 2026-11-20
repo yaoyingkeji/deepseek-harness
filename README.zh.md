@@ -33,7 +33,7 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 |------|------|
 | **构建目标** | 新增 `linux-x64` 打包目标（`apps/desktop/scripts/desktop-build-paths.*`、`package-target.ts`） |
 | **electron-builder 配置** | Linux 段配置：`AppImage` + `deb` 双产物、图标目录、`maintainer` / `synopsis` / `executableName`、`StartupWMClass` |
-| **自动更新源** | 「检查更新」固定指向 `linux-latest-official` Release（`electron-builder-config.mjs` 中的 `resolveDesktopLinuxUpdateConfig`） |
+| **自动更新源** | ✅ `linux-latest` → `0.2.2-rc.5` |
 | **构建脚本** | `package-linux.sh`（本地一键 AppImage + deb 打包） |
 | **CI 工作流** | `.github/workflows/linux-package-release.yml`：云端构建、发布、刷新更新源、同步 README 状态 |
 | **发布/上传适配** | `desktop-publish-*` 系列脚本与 `retain-desktop-upload` 对 `linux-x64` 目标的处理（Linux 产物直接由工作流发布，不走 COS 保留上传） |
