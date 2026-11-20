@@ -20,6 +20,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-context-menu/client'
  */
 import type {} from '@deepseek-ai/dsh-client-product-analytics/client'
 import type { Context } from '@deepseek-ai/cordis'
+import type { SyncedConfig } from '@deepseek-ai/dsh-client-config/types'
+import { desktopNotify } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { WorkspaceNavigationConfig } from '../types.ts'
 import type { RemoteHostFacts } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ISessions, SessionForkError } from '@deepseek-ai/dsh-api-session-controller/client'
 import type {
@@ -61,7 +64,6 @@ import { RowActionToast } from './session-actions/RowActionToast.tsx'
 import { registerToasts } from './toast/register.ts'
 import { WorkspacePicker, WorkspacePickerFactory } from './WorkspacePicker.tsx'
 import { en, ja, es, fr, de, ru, pt, zh, type WorkspaceKey } from './locales.ts'
-import { desktopNotify } from '@deepseek-ai/dsh-client-ui-primitives'
 
 export type { StartSessionOptions, UiWorkspace } from './navigation.ts'
 export type {
@@ -121,6 +123,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 declare module '@deepseek-ai/dsh-api-session-controller/client' {
   interface SessionReferenceSourceMap {
     workspaceOperation: unknown
+    /** Recently viewed Sessions kept receiving history after leaving the main view. */
+    recentViews: unknown
   }
 }
 
@@ -147,8 +151,9 @@ export const inject = ['contextMenus',
  * ledger. Inject factories return plain callbacks; data reads use the
  * framework's global hooks.
  * @param ctx - client root context.
+ * @param config - Host-synced navigation configuration.
  */
-export function apply(ctx: Context): void {
+export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConfig>): void {
   const sessions = ctx.get('sessions') as ISessions
   const workspaces = ctx.get('workspaces') as IWorkspaces
   // One viewing-store instance, created here as ui-layout does for its layout
@@ -161,7 +166,7 @@ export function apply(ctx: Context): void {
   let toastSeq = 0
   const notify = (toast: RowToast): void => { rowToast.set({ ...toast, seq: ++toastSeq }) }
   const uiWorkspace = new UiWorkspaceService(
-    ctx, ctx.remote.directoryPicker, workspaces, sessions, viewInstance.actions, notify,
+    ctx, ctx.remote.directoryPicker, workspaces, sessions, viewInstance.actions, notify, config.recentViewLimit,
   )
   ctx.slots.provideRoot({
     hooks: { workspaces: workspaces.list },
@@ -172,7 +177,6 @@ export function apply(ctx: Context): void {
     },
   })
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-workspace: dictionaries')
-
   // Desktop notifications for remote connections, credential expiry, and
   // session errors while the window is not focused.
   ctx.effect(() => ctx.remote.$on('connection/remote-requested', (request) => {
@@ -212,40 +216,7 @@ export function apply(ctx: Context): void {
       sessionId,
     )
   }), 'ui-workspace: session error notification subscription')
-  const wasRunning = new Set<string>()
-  ctx.effect(() => ctx.remote.$on('api-session/status', (sessionId, running) => {
-    if (running) {
-      wasRunning.add(sessionId)
-    } else if (wasRunning.delete(sessionId)) {
-      desktopNotify(
-        'session',
-        '任务已完成',
-        '一个会话的任务已完成',
-        'Task completed',
-        'A session task has completed',
-        sessionId,
-      )
-    }
-  }), 'ui-workspace: session idle notification subscription')
-  // Clean up wasRunning when a session is removed directly (not via idle) so
-  // its id does not linger in the set after the session is gone.
-  ctx.effect(() => ctx.remote.$on('api-session/removed', (sessionId) => {
-    wasRunning.delete(sessionId)
-  }), 'ui-workspace: session removed cleanup')
   const shortcutControls = createWorkspaceShortcutControls()
-
-  // Desktop notification click / tray open dispatches a DOM event carrying
-  // the sessionId to navigate to. The preload forwards the main-process IPC
-  // as `dsh-desktop:notify-action` so the workspace can open the session.
-  ctx.effect(() => {
-    if (typeof window === 'undefined') return () => {}
-    const handler = (event: Event): void => {
-      const sessionId = (event as CustomEvent<string | undefined>).detail
-      if (typeof sessionId === 'string' && sessionId.length > 0) uiWorkspace.openSession(sessionId as SessionId)
-    }
-    window.addEventListener('dsh-desktop:notify-action', handler)
-    return () => { window.removeEventListener('dsh-desktop:notify-action', handler) }
-  }, 'ui-workspace: desktop notify-action listener')
 
   const searchSessions: WorkspaceBrowserInjected['searchSessions'] = async (query, signal) => {
     const result = await sessions.search(query, signal)

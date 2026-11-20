@@ -20,7 +20,8 @@
     "src/remote-connection-request.ts",
     "src/rpc-host.ts",
     "src/rpc-schema.ts",
-    "src/rpc.ts"
+    "src/rpc.ts",
+    "src/types.ts"
   ],
   "references": [
     {

@@ -11,14 +11,15 @@
     "src/types.ts"
   ],
   "references": [
-    { "path": "../../web/web" },
     {
       "path": "../../../vendor/cordis"
     },
     {
       "path": "../gateway/tsconfig.host.json"
     },
-    { "path": "../../client/connection/tsconfig.host.json" },
+    {
+      "path": "../../client/connection/tsconfig.host.json"
+    },
     {
       "path": "../../core/session"
     },
@@ -83,13 +84,19 @@
       "path": "../../boot/plugin-manager"
     },
     {
+      "path": "../../mcp/mcp-manager"
+    },
+    {
       "path": "../../boot/plugin-market"
     },
     {
       "path": "../../host/plugin-inventory"
     },
     {
-      "path": "../../credentials/deepseek-account"
+      "path": "../../account/deepseek-account"
+    },
+    {
+      "path": "../../web/web"
     }
   ]
 }
