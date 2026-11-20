@@ -8,6 +8,48 @@ It is built on an **everything-is-a-plugin** architecture and powered by [Cordis
 
 Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
 
+## Repository notes
+
+> This is a fork build repository (Yaoying Tech). The **`linux-package-official`** branch is the
+> **official upstream variant**: it matches upstream `deepseek-ai/deepseek-harness` `master`
+> feature-for-feature and only injects Linux packaging infrastructure. No UI or functional changes.
+> Use it if you want the stock upstream experience with Linux installers.
+
+| Branch | Purpose | Artifacts |
+|--------|---------|-----------|
+| **[`linux-custom-titlebar`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-custom-titlebar)** (default) | Customized: native titlebar integration, tray, desktop notifications, configurable close behavior, multiple update channels | `v*-linux-x64-custom` |
+| **[`linux-package-official`](https://github.com/yaoyingkeji/deepseek-harness/tree/linux-package-official)** | Official upstream variant: Linux packaging only | `v*-linux-x64-official` |
+| **[`master`](https://github.com/yaoyingkeji/deepseek-harness/tree/master)** | Pure upstream mirror, no Linux changes | — |
+
+### `linux-package-official` — official upstream variant
+
+**Feature-identical to upstream `master`**; only Linux packaging infrastructure is injected.
+No custom titlebar, no tray, no extra notifications, no close-behavior switch.
+
+What is added on top of upstream:
+
+| Area | Content |
+|------|---------|
+| **Build target** | `linux-x64` packaging target (`desktop-build-paths.*`, `package-target.ts`) |
+| **electron-builder** | Linux section: `AppImage` + `deb`, icon set, `maintainer` / `synopsis` / `executableName`, `StartupWMClass` |
+| **Update feed** | "Check for updates" points at the `linux-latest-official` release |
+| **Build script** | `package-linux.sh` |
+| **CI workflow** | `.github/workflows/linux-package-release.yml` |
+| **Publish/upload** | `desktop-publish-*` and retain/upload paths handle `linux-x64` (artifacts are published by the workflow, not COS) |
+| **Publisher package types** | `linux-x64` added to `DesktopAutoUpdateTarget`, zod schemas and `desktopPackageWorkflows` |
+
+Known differences from upstream: an added `homepage` field in `apps/desktop/package.json`; reserved
+i18n strings for `no_release` / `upstream_available` update phases that the (upstream-identical)
+update coordinator never emits; and local copies of `desktop-auto-update-environment.*`,
+`desktop-publish-targets.ts`, `desktop-release-store.ts` kept for the packaging chain.
+
+Artifacts: `v*-linux-x64-official` (AppImage + `.deb`), feed: `linux-latest-official`.
+The native Office engine is **not** bundled here — use the `linux-custom-titlebar` artifacts if needed.
+
+### `master` — pure upstream mirror
+
+Tracks upstream `master` and mirrors its tags and releases. Used for comparison and upstream tracking.
+
 ## Developer preview
 
 DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
