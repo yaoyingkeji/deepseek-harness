@@ -16,13 +16,10 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: '构建分支：linux-custom-titlebar（定制版）/ linux-package-official（官方版）'
-        type: choice
-        options:
-          - linux-custom-titlebar
-          - linux-package-official
-        default: linux-custom-titlebar
-        required: true
+        description: '构建分支：linux-custom-titlebar（定制优化版）/ linux-package-official（官方上游版）。留空则使用当前触发分支。'
+        type: string
+        default: ''
+        required: false
       publish:
         description: '发布 GitHub Release 并上传制品'
         type: boolean
@@ -760,4 +757,3 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           # 交给 Node 脚本处理 README 状态段，避免 sed 处理多语言表格出错
           node .github/scripts/sync-readme-status.mjs "$BRANCH" "$VERSION" "${{ steps.branch.outputs.slug }}"
-
